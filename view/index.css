@@ -1,0 +1,270 @@
+:root {
+  --bg: #050505;
+  --bg-soft: #0b0b0c;
+  --ink: #ece9e2;
+  --muted: #98948b;
+  --gold: #d4af37;
+  --gold-soft: #e9cf6b;
+  --gold-deep: #8a6d1d;
+  --line: rgba(236, 233, 226, 0.1);
+  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --font-tech: 'Rajdhani', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Cinzel', Georgia, serif;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --bs-primary: var(--gold);
+  --bs-primary-rgb: 212, 175, 55;
+  --bs-body-color: var(--ink);
+  --bs-body-bg: var(--bg);
+  --bs-emphasis-color: var(--ink);
+  --bs-secondary-color: var(--muted);
+  --bs-secondary-rgb: 152, 148, 139;
+  --bs-tertiary-color: var(--muted);
+  --bs-link-color: var(--gold-soft);
+  --bs-link-hover-color: var(--gold);
+  --bs-border-color: rgba(212, 175, 55, 0.45);
+  --bs-heading-color: var(--ink);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+.h1,
+.h2,
+.h3,
+.h4 {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.app-capa {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+}
+
+.fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.fondo-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fondo-velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 5, 5, 0.28), rgba(5, 5, 5, 0.5));
+}
+
+.cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 280px;
+  height: 280px;
+  margin: -140px 0 0 -140px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.16), transparent 68%);
+}
+
+.marca {
+  background: rgba(5, 5, 5, 0.82);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+.marca .nav-link,
+.marca .navbar-text {
+  font-family: var(--font-tech);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.marca .nav-link:hover,
+.marca .nav-link:focus,
+.marca .nav-link.active {
+  color: var(--gold);
+}
+
+.marca-logo {
+  height: 64px;
+  width: 64px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.7);
+}
+
+.marca-logo-grande {
+  height: 168px;
+  width: 168px;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto 1.25rem;
+}
+
+.marca-tarjeta,
+.card,
+.modal-content {
+  background: rgba(11, 11, 12, 0.92);
+  color: var(--ink);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 0;
+}
+
+.btn-primary {
+  --bs-btn-color: #050505;
+  --bs-btn-bg: var(--gold);
+  --bs-btn-border-color: var(--gold);
+  --bs-btn-hover-color: #050505;
+  --bs-btn-hover-bg: var(--gold-soft);
+  --bs-btn-hover-border-color: var(--gold-soft);
+  --bs-btn-active-color: #050505;
+  --bs-btn-active-bg: var(--gold-deep);
+  --bs-btn-active-border-color: var(--gold-deep);
+  --bs-btn-disabled-color: #050505;
+  --bs-btn-disabled-bg: var(--gold);
+  --bs-btn-disabled-border-color: var(--gold);
+  --bs-btn-focus-shadow-rgb: 212, 175, 55;
+  font-family: var(--font-tech);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+.btn-outline-primary,
+.btn-outline-dark {
+  --bs-btn-color: var(--gold);
+  --bs-btn-border-color: var(--gold);
+  --bs-btn-hover-color: #050505;
+  --bs-btn-hover-bg: var(--gold);
+  --bs-btn-hover-border-color: var(--gold);
+  --bs-btn-active-color: #050505;
+  --bs-btn-active-bg: var(--gold-deep);
+  --bs-btn-active-border-color: var(--gold-deep);
+  --bs-btn-focus-shadow-rgb: 212, 175, 55;
+  font-family: var(--font-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+.btn-dark {
+  --bs-btn-color: #050505;
+  --bs-btn-bg: var(--gold);
+  --bs-btn-border-color: var(--gold);
+  --bs-btn-hover-color: #050505;
+  --bs-btn-hover-bg: var(--gold-soft);
+  --bs-btn-hover-border-color: var(--gold-soft);
+  border-radius: 0;
+}
+
+.form-control,
+.form-select {
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 0;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background: var(--bg);
+  color: var(--ink);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.2);
+}
+
+.form-control::placeholder {
+  color: var(--muted);
+}
+
+.form-label,
+.form-check-label {
+  color: var(--ink);
+  font-family: var(--font-tech);
+  letter-spacing: 0.06em;
+}
+
+.form-check-input:checked {
+  background-color: var(--gold);
+  border-color: var(--gold);
+}
+
+.form-check-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.2);
+}
+
+.table {
+  --bs-table-color: var(--ink);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: rgba(212, 175, 55, 0.28);
+  --bs-table-hover-color: var(--ink);
+  --bs-table-hover-bg: rgba(212, 175, 55, 0.08);
+}
+
+.table thead th {
+  font-family: var(--font-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.badge.bg-dark,
+.marca-activo {
+  background: var(--gold) !important;
+  color: #050505 !important;
+}
+
+.marca-baja {
+  background: transparent !important;
+  color: var(--muted) !important;
+  border: 1px solid rgba(212, 175, 55, 0.45) !important;
+}
+
+.alert {
+  background: rgba(11, 11, 12, 0.92);
+  color: var(--ink);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 0;
+}
+
+.btn-close {
+  filter: invert(1) grayscale(1);
+}
+
+.modal-header,
+.modal-footer {
+  border-color: rgba(212, 175, 55, 0.28);
+}
+
+.text-secondary {
+  color: var(--muted) !important;
+}

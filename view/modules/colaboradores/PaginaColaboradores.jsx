@@ -1,0 +1,246 @@
+import { useEffect, useState } from 'react'
+import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
+import { guardarColaborador, listarColaboradores } from '../../cliente/colaboradores'
+
+const formularioVacio = {
+  id: null,
+  nombre: '',
+  telefono: '',
+  fecha_ingreso: '',
+  activo: true,
+  correo: '',
+  clave: '',
+  tieneAcceso: false,
+  yaTieneAcceso: false,
+}
+
+export default function PaginaColaboradores() {
+  const [lista, setLista] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [formulario, setFormulario] = useState(null)
+  const [errorFormulario, setErrorFormulario] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  async function cargar() {
+    setError('')
+    try {
+      const datos = await listarColaboradores()
+      setLista(datos.colaboradores)
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  function abrirNuevo() {
+    setErrorFormulario('')
+    setFormulario({ ...formularioVacio })
+  }
+
+  function abrirEdicion(colaborador) {
+    setErrorFormulario('')
+    setFormulario({
+      id: colaborador.id,
+      nombre: colaborador.nombre,
+      telefono: colaborador.telefono ?? '',
+      fecha_ingreso: colaborador.fecha_ingreso ?? '',
+      activo: colaborador.activo,
+      correo: colaborador.correo ?? '',
+      clave: '',
+      tieneAcceso: Boolean(colaborador.correo),
+      yaTieneAcceso: Boolean(colaborador.correo),
+    })
+  }
+
+  function cambiar(campo, valor) {
+    setFormulario((actual) => ({ ...actual, [campo]: valor }))
+  }
+
+  async function guardar(evento) {
+    evento.preventDefault()
+    setErrorFormulario('')
+    setGuardando(true)
+    try {
+      await guardarColaborador({
+        id: formulario.id,
+        nombre: formulario.nombre,
+        telefono: formulario.telefono,
+        fecha_ingreso: formulario.fecha_ingreso,
+        activo: formulario.activo,
+        correo: formulario.tieneAcceso ? formulario.correo : '',
+        clave: formulario.tieneAcceso ? formulario.clave : '',
+      })
+      setFormulario(null)
+      setAviso(formulario.id ? 'Colaborador actualizado.' : 'Colaborador creado.')
+      await cargar()
+    } catch (fallo) {
+      setErrorFormulario(fallo.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function cambiarActivo(colaborador, activo) {
+    setError('')
+    setAviso('')
+    try {
+      await guardarColaborador({
+        id: colaborador.id,
+        nombre: colaborador.nombre,
+        telefono: colaborador.telefono ?? '',
+        fecha_ingreso: colaborador.fecha_ingreso ?? '',
+        activo,
+        correo: colaborador.correo ?? '',
+        clave: '',
+      })
+      setAviso(activo ? 'Colaborador activado.' : 'Colaborador dado de baja.')
+      await cargar()
+    } catch (fallo) {
+      setError(fallo.message)
+    }
+  }
+
+  return (
+    <>
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h1 className="h3 mb-0">Colaboradores</h1>
+        <Button onClick={abrirNuevo}>Nuevo colaborador</Button>
+      </div>
+      {error && <Alert variant="danger">{error}</Alert>}
+      {aviso && <Alert variant="light" className="border border-dark text-black" onClose={() => setAviso('')} dismissible>{aviso}</Alert>}
+      {cargando ? (
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Cargando colaboradores</span>
+        </Spinner>
+      ) : lista.length === 0 ? (
+        <p className="text-secondary mb-0">Todavía no hay colaboradores en esta sede.</p>
+      ) : (
+        <Table responsive hover>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Teléfono</th>
+              <th>Ingreso</th>
+              <th>Acceso</th>
+              <th>Estado</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {lista.map((colaborador) => (
+              <tr key={colaborador.id}>
+                <td>{colaborador.nombre}</td>
+                <td>{colaborador.telefono || '—'}</td>
+                <td>{colaborador.fecha_ingreso || '—'}</td>
+                <td>{colaborador.correo || 'Sin acceso'}</td>
+                <td>
+                  <Badge bg="dark" className={colaborador.activo ? 'marca-activo' : 'marca-baja'}>
+                    {colaborador.activo ? 'Activo' : 'De baja'}
+                  </Badge>
+                </td>
+                <td className="text-end text-nowrap">
+                  <Button size="sm" variant="outline-primary" className="me-2" onClick={() => abrirEdicion(colaborador)}>
+                    Editar
+                  </Button>
+                  {colaborador.activo ? (
+                    <Button size="sm" variant="outline-primary" onClick={() => cambiarActivo(colaborador, false)}>
+                      Dar de baja
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="primary" onClick={() => cambiarActivo(colaborador, true)}>
+                      Activar
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+
+      <Modal show={formulario !== null} onHide={() => setFormulario(null)} centered>
+        <Form onSubmit={guardar}>
+          <Modal.Header closeButton>
+            <Modal.Title>{formulario?.id ? 'Editar colaborador' : 'Nuevo colaborador'}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {errorFormulario && <Alert variant="danger">{errorFormulario}</Alert>}
+            <Form.Group className="mb-3" controlId="nombre">
+              <Form.Label>Nombre</Form.Label>
+              <Form.Control
+                value={formulario?.nombre ?? ''}
+                onChange={(evento) => cambiar('nombre', evento.target.value)}
+                required
+                maxLength={120}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="telefono">
+              <Form.Label>Teléfono</Form.Label>
+              <Form.Control
+                value={formulario?.telefono ?? ''}
+                onChange={(evento) => cambiar('telefono', evento.target.value)}
+                maxLength={20}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="fecha">
+              <Form.Label>Fecha de ingreso</Form.Label>
+              <Form.Control
+                type="date"
+                value={formulario?.fecha_ingreso ?? ''}
+                onChange={(evento) => cambiar('fecha_ingreso', evento.target.value)}
+              />
+            </Form.Group>
+            <Form.Check
+              className="mb-3"
+              id="tieneAcceso"
+              label="Puede entrar al sistema"
+              checked={Boolean(formulario?.tieneAcceso)}
+              disabled={Boolean(formulario?.yaTieneAcceso)}
+              onChange={(evento) => cambiar('tieneAcceso', evento.target.checked)}
+            />
+            {formulario?.tieneAcceso && (
+              <>
+                <Form.Group className="mb-3" controlId="correo">
+                  <Form.Label>Correo</Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={formulario.correo}
+                    onChange={(evento) => cambiar('correo', evento.target.value)}
+                    required
+                  />
+                </Form.Group>
+                <Form.Group controlId="clave">
+                  <Form.Label>{formulario.yaTieneAcceso ? 'Nueva clave' : 'Clave'}</Form.Label>
+                  <Form.Control
+                    type="password"
+                    value={formulario.clave}
+                    autoComplete="new-password"
+                    minLength={formulario.clave ? 8 : undefined}
+                    required={!formulario.yaTieneAcceso}
+                    placeholder={formulario.yaTieneAcceso ? 'Dejar en blanco para no cambiar' : ''}
+                    onChange={(evento) => cambiar('clave', evento.target.value)}
+                  />
+                </Form.Group>
+              </>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" type="button" onClick={() => setFormulario(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={guardando}>
+              {guardando ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+    </>
+  )
+}
