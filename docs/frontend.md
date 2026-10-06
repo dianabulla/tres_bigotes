@@ -4,15 +4,28 @@ Aplicación de gestión en `view/`. Bootstrap se carga en `view/App.jsx`. El men
 
 | Ruta | Quién entra |
 |---|---|
-| `/ingreso` | público |
-| `/reservar` | público, sin cuenta |
+| `/` | público. Es el inicio de la barbería y la reserva del cliente |
+| `/ingreso` | público, equipo |
 | `/gestion/colaboradores` | administrador. Es la pantalla de entrada de ese rol |
+| `/gestion/servicios` | administrador |
 | `/gestion/agenda` | administrador, recepción, colaborador |
 | `/gestion/clinica` | administrador, recepción, colaborador |
 | `/gestion/colaboradores` | administrador |
 | `/gestion/comisiones` | administrador, colaborador |
 | `/gestion/inventario` | administrador, recepción |
 | `/gestion/caja` | administrador, recepción |
+
+## Estado — 6 de octubre de 2026
+
+Hecho: la pantalla se ve en `http://localhost/tres_bigotes/`. `BrowserRouter` usa la base de Vite. Logo y video de ingreso, reserva y el marco apuntan a esa base. Para publicar un cambio de `view/` en Apache: `npm run build`.
+
+El administrador entra en Colaboradores. El menú del marco queda siempre visible: Colaboradores, Servicios, Agenda, Ficha clínica, Comisiones, Inventario y Caja.
+
+Servicios es el catálogo de la sede. El administrador crea y edita nombre, categoría, duración, precio y la receta de insumos, y puede dar de baja. Recepción y colaborador no entran a esa pantalla. La agenda solo elige servicios activos al reservar. Si al completar falta stock, el aviso de la agenda es el de la API.
+
+El inicio `/` usa la portada original: video con viñeta y scanlines, brasas, marco, marquesina y el título 3 BIGOTES con el corte de glitch. En pantallas angostas el menú se abre en cortina. Reservar cita abre el formulario; después se elige el servicio y ahí aparecen los profesionales con hora libre. Se ven el título 3 Bigotes y el botón Reservar cita. Debajo quedan el equipo, los servicios, la agenda y el contacto. El ingreso del equipo está en Contacto. El video fijo del login queda en `/ingreso`. `/reservar` vuelve a `/`. Apache abre la copia generada en `dist/`. Los archivos originales de esa portada no estaban en git.
+
+Falta: una pasarela de fotos de trabajos. Hoy la carta usa el video que ya está en `view/public/media/fondo.mp4`.
 
 ## Estado — 5 de octubre de 2026
 

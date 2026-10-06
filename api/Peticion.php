@@ -59,6 +59,10 @@ final class Peticion
 
     private static function cuerpo(): array
     {
+        $tipo = (string) ($_SERVER['CONTENT_TYPE'] ?? '');
+        if (stripos($tipo, 'multipart/form-data') === 0) {
+            return [];
+        }
         $crudo = file_get_contents('php://input');
         if ($crudo === false || trim($crudo) === '') {
             return [];

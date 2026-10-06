@@ -72,7 +72,7 @@ final class Cita
     public static function profesionales(int $sede): array
     {
         $consulta = Conexion::obtener()->prepare(
-            'SELECT id, nombre
+            'SELECT id, nombre, foto
              FROM colaborador
              WHERE establecimiento_id = :sede AND activo = 1
              ORDER BY nombre, id'
@@ -83,6 +83,7 @@ final class Cita
             $filas[] = [
                 'id' => (int) $fila['id'],
                 'nombre' => $fila['nombre'],
+                'foto' => $fila['foto'],
             ];
         }
         return $filas;

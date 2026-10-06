@@ -4,7 +4,7 @@ Tres carpetas. Ninguna escribe el trabajo de otra.
 
 | Capa | Carpeta | Entra por |
 |---|---|---|
-| Vistas | `view/` | Vite, puerto 5173. Ahí está `index.html` y React |
+| Vistas | `view/` | En local, Apache en `http://localhost/tres_bigotes/`. El código sigue en `view/` y Vite lo genera en `dist/` |
 | API | `api/` | Rutas y formato JSON |
 | Controladores | `controllers/` | Reglas de la petición |
 | Modelos | `models/` | Consultas |
@@ -13,6 +13,8 @@ Tres carpetas. Ninguna escribe el trabajo de otra.
 | Datos | `database/` | `database/migrations/` |
 
 El navegador llama a `VITE_API_URL` (en local, `http://localhost/tres_bigotes/public`). La API lee `config/.env`, abre MySQL y responde JSON. El esquema no se crea desde PHP.
+
+En local, `.htaccess` de la raíz muestra la interfaz generada y deja `public/` para la API. Las rutas de React (`/`, `/ingreso`, `/gestion`) vuelven a `dist/index.html`. Después de cambiar `view/`, hay que volver a generar con `npm run build` para verlo en Apache. El inicio `/` es la reserva pública. `/reservar` redirige ahí.
 
 El HTML y el PHP no comparten archivo. `view/` es el frontend. `public/`, `api/`, `controllers/`, `models/` y `config/` son PHP y responden JSON.
 
@@ -27,6 +29,12 @@ Orden cuando un cambio cruza capas: migración, luego API, luego pantalla.
 5. `DELETE /api/sesion` borra esa sesión.
 
 La sesión dura 12 horas. Zona horaria de la API: `America/Bogota`.
+
+## Estado — 6 de octubre de 2026
+
+Hecho: la interfaz se abre en Apache en `http://localhost/tres_bigotes/`. `vite.config.js` publica en `dist/` con base `/tres_bigotes/`. Completar una cita descuenta los insumos definidos en `servicio_insumo`. Si no hay stock, la cita no cambia de estado. El catálogo se administra en la pantalla Servicios y usa los endpoints que ya existían; no hay tabla nueva.
+
+Falta: nada de este corte.
 
 ## Estado — 5 de octubre de 2026
 

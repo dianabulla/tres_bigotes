@@ -29,6 +29,7 @@ view/
     agenda/
     clinica/
     colaboradores/
+    servicios/
     inventario/
     caja/
   components/     marco, sesión y rutas privadas

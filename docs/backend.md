@@ -21,15 +21,19 @@
 | `POST /api/caja/ventas` | administrador, recepción | Cobra productos y, si se envía `cita_id`, los servicios de una cita completada al precio aplicado. Una cita no se cobra dos veces. El stock del producto baja en la misma operación. Medios: `nequi`, `daviplata`, `qr` |
 | `POST /api/caja/cierre` | administrador, recepción | Reporta los tres medios. La diferencia la calcula el servidor y el turno queda cerrado |
 | `GET /api/servicios` | administrador, recepción | Catálogo de la sede. Recepción solo ve activos |
-| `POST /api/servicios` | administrador | Alta de servicio: nombre, duración y precio |
-| `PUT /api/servicios/{id}` | administrador | Edita el servicio y su baja |
+| `POST /api/servicios` | administrador | Alta de servicio: nombre, categoría, duración, precio y, si viene, la receta de insumos |
+| `PUT /api/servicios/{id}` | administrador | Edita el servicio, su categoría, su baja y, si el cuerpo trae `insumos`, la receta. Cada línea es `producto_id` y `cantidad` de un insumo activo. Sin esa clave, la receta no cambia |
 | `GET /api/clientes?q=` | administrador, recepción | Busca clientes de la sede por nombre o teléfono |
 | `GET /api/citas?desde=&hasta=` | administrador, recepción, colaborador | Citas del rango. El colaborador solo ve las suyas. `colaborador_id` filtra a los otros roles |
 | `POST /api/citas` | administrador, recepción | Reserva. El fin y el precio salen de MySQL. No permite solape del profesional |
-| `PUT /api/citas/{id}/estado` | administrador, recepción, colaborador | Cambia el estado permitido. El colaborador no cancela y solo toca la suya |
-| `GET /api/reserva` | público | Servicios activos, profesionales y nombre de la sede |
+| `PUT /api/citas/{id}/estado` | administrador, recepción, colaborador | Cambia el estado permitido. El colaborador no cancela y solo toca la suya. Al completar, descuenta los insumos de los servicios en la misma operación. Si no hay stock, responde `422` y la cita sigue en proceso |
+| `GET /api/reserva` | público | Servicios activos, con su categoría, profesionales con foto, reseñas y nombre de la sede |
+| `POST /api/colaboradores/{id}/foto` | administrador | Foto JPG, PNG o WebP del profesional, hasta 2 MB |
+| `GET /api/resenas` | administrador | Reseñas de la carta |
+| `POST /api/resenas` | administrador | Publica una reseña: autor, texto y calificación de 1 a 5 |
+| `DELETE /api/resenas/{id}` | administrador | Quita esa reseña de la sede |
 | `GET /api/reserva/cliente?telefono=` | público | Si el teléfono ya existe, devuelve nombre y correo. Si no, `cliente` nulo |
-| `GET /api/reserva/horarios` | público | Horarios libres de 08:00 a 20:00 según profesional, día y servicios |
+| `GET /api/reserva/horarios` | público | Horarios libres de 08:00 a 20:00 según profesional, día y servicios. Sin servicios, muestra huecos de 30 minutos |
 | `POST /api/reserva` | público | Crea la cita sin sesión. Reutiliza la ficha del teléfono y guarda nombre y correo |
 | `GET /api/clinica/clientes?q=` | administrador, recepción, colaborador | Busca clientes. El colaborador solo ve los de sus citas |
 | `GET /api/clinica/clientes/{id}` | administrador, recepción, colaborador | Ficha, notas y, si es el profesional, visitas sin nota |
@@ -49,8 +53,14 @@ Errores: `401` sesión inválida, `403` sin permiso de rol, `422` cuerpo inváli
 
 Todas las carpetas de módulo ya tienen rutas.
 
+## Estado — 6 de octubre de 2026
+
+Hecho: completar una cita registra una salida por cada insumo de sus servicios. El administrador guarda esa receta al crear o editar el servicio. Si el stock no alcanza, la cita no pasa a completada. Alta y edición de servicio exigen categoría, y el catálogo público la devuelve.
+
+Falta: nada de este corte. El precio y el stock se leen en MySQL.
+
 ## Estado — 5 de octubre de 2026
 
 Hecho: configuración por `.env`, PDO, enrutador, CORS hacia `http://localhost:5173`, sesión, colaboradores, inventario, caja, agenda, reserva pública, ficha clínica y comisiones. La caja cobra una cita completada una sola vez, al precio aplicado, y puede sumar productos en la misma venta. La liquidación usa ese mismo precio y redondea a pesos. El detalle del día está en `docs/avance-2026-10-05.md`.
 
-Falta: descontar insumos al completar una cita. El modelo no relaciona servicio con producto. El precio y el stock se leen en MySQL.
+Falta, en ese corte: descontar insumos al completar una cita. Quedó resuelto el 6 de octubre.

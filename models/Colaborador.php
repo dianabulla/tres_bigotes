@@ -12,7 +12,7 @@ final class Colaborador
     public static function listar(int $sede): array
     {
         $consulta = Conexion::obtener()->prepare(
-            'SELECT c.id, c.nombre, c.telefono, c.fecha_ingreso, c.activo, c.usuario_id, u.correo
+            'SELECT c.id, c.nombre, c.foto, c.telefono, c.fecha_ingreso, c.activo, c.usuario_id, u.correo
              FROM colaborador c
              LEFT JOIN usuario u ON u.id = c.usuario_id
              WHERE c.establecimiento_id = :sede
@@ -29,7 +29,7 @@ final class Colaborador
     public static function buscar(int $sede, int $id): ?array
     {
         $consulta = Conexion::obtener()->prepare(
-            'SELECT c.id, c.nombre, c.telefono, c.fecha_ingreso, c.activo, c.usuario_id, u.correo
+            'SELECT c.id, c.nombre, c.foto, c.telefono, c.fecha_ingreso, c.activo, c.usuario_id, u.correo
              FROM colaborador c
              LEFT JOIN usuario u ON u.id = c.usuario_id
              WHERE c.id = :id AND c.establecimiento_id = :sede
@@ -75,11 +75,24 @@ final class Colaborador
         ]);
     }
 
+    public static function guardarFoto(PDO $pdo, int $sede, int $id, string $foto): void
+    {
+        $guardar = $pdo->prepare(
+            'UPDATE colaborador SET foto = :foto WHERE id = :id AND establecimiento_id = :sede'
+        );
+        $guardar->execute([
+            'foto' => $foto,
+            'id' => $id,
+            'sede' => $sede,
+        ]);
+    }
+
     public static function presentar(array $fila): array
     {
         return [
             'id' => (int) $fila['id'],
             'nombre' => $fila['nombre'],
+            'foto' => $fila['foto'],
             'telefono' => $fila['telefono'],
             'fecha_ingreso' => $fila['fecha_ingreso'],
             'activo' => (int) $fila['activo'] === 1,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
-import { guardarColaborador, listarColaboradores } from '../../cliente/colaboradores'
+import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
+import { crearResena, eliminarResena, guardarColaborador, listarColaboradores, listarResenas, subirFotoColaborador } from '../../cliente/colaboradores'
 
 const formularioVacio = {
   id: null,
@@ -12,6 +12,7 @@ const formularioVacio = {
   clave: '',
   tieneAcceso: false,
   yaTieneAcceso: false,
+  fotoArchivo: null,
 }
 
 export default function PaginaColaboradores() {
@@ -22,12 +23,17 @@ export default function PaginaColaboradores() {
   const [formulario, setFormulario] = useState(null)
   const [errorFormulario, setErrorFormulario] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [resenas, setResenas] = useState([])
+  const [autor, setAutor] = useState('')
+  const [texto, setTexto] = useState('')
+  const [nota, setNota] = useState('5')
 
   async function cargar() {
     setError('')
     try {
-      const datos = await listarColaboradores()
+      const [datos, opiniones] = await Promise.all([listarColaboradores(), listarResenas()])
       setLista(datos.colaboradores)
+      setResenas(opiniones.resenas)
     } catch (fallo) {
       setError(fallo.message)
     } finally {
@@ -68,7 +74,7 @@ export default function PaginaColaboradores() {
     setErrorFormulario('')
     setGuardando(true)
     try {
-      await guardarColaborador({
+      const respuesta = await guardarColaborador({
         id: formulario.id,
         nombre: formulario.nombre,
         telefono: formulario.telefono,
@@ -77,6 +83,10 @@ export default function PaginaColaboradores() {
         correo: formulario.tieneAcceso ? formulario.correo : '',
         clave: formulario.tieneAcceso ? formulario.clave : '',
       })
+      const id = formulario.id || respuesta?.colaborador?.id
+      if (formulario.fotoArchivo && id) {
+        await subirFotoColaborador(id, formulario.fotoArchivo)
+      }
       setFormulario(null)
       setAviso(formulario.id ? 'Colaborador actualizado.' : 'Colaborador creado.')
       await cargar()
@@ -101,6 +111,31 @@ export default function PaginaColaboradores() {
         clave: '',
       })
       setAviso(activo ? 'Colaborador activado.' : 'Colaborador dado de baja.')
+      await cargar()
+    } catch (fallo) {
+      setError(fallo.message)
+    }
+  }
+
+  async function guardarResena(evento) {
+    evento.preventDefault()
+    setError('')
+    try {
+      await crearResena({ autor, texto, calificacion: Number(nota) })
+      setAutor('')
+      setTexto('')
+      setNota('5')
+      setAviso('Reseña publicada en la carta.')
+      await cargar()
+    } catch (fallo) {
+      setError(fallo.message)
+    }
+  }
+
+  async function quitarResena(id) {
+    setError('')
+    try {
+      await eliminarResena(id)
       await cargar()
     } catch (fallo) {
       setError(fallo.message)
@@ -189,6 +224,14 @@ export default function PaginaColaboradores() {
                 maxLength={20}
               />
             </Form.Group>
+            <Form.Group className="mb-3" controlId="foto">
+              <Form.Label>Foto para la carta</Form.Label>
+              <Form.Control
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(evento) => cambiar('fotoArchivo', evento.target.files?.[0] ?? null)}
+              />
+            </Form.Group>
             <Form.Group className="mb-3" controlId="fecha">
               <Form.Label>Fecha de ingreso</Form.Label>
               <Form.Control
@@ -241,6 +284,53 @@ export default function PaginaColaboradores() {
           </Modal.Footer>
         </Form>
       </Modal>
+
+      <h2 className="h4 mt-5">Reseñas de la carta</h2>
+      <Form className="mb-3" onSubmit={guardarResena}>
+        <Row>
+          <Col md={4}>
+            <Form.Group className="mb-3" controlId="autorResena">
+              <Form.Label>Nombre</Form.Label>
+              <Form.Control value={autor} maxLength={80} required onChange={(evento) => setAutor(evento.target.value)} />
+            </Form.Group>
+          </Col>
+          <Col md={2}>
+            <Form.Group className="mb-3" controlId="notaResena">
+              <Form.Label>Nota</Form.Label>
+              <Form.Select value={nota} onChange={(evento) => setNota(evento.target.value)}>
+                {[5, 4, 3, 2, 1].map((valor) => (
+                  <option key={valor} value={valor}>{valor}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group className="mb-3" controlId="textoResena">
+              <Form.Label>Reseña</Form.Label>
+              <Form.Control value={texto} maxLength={400} required onChange={(evento) => setTexto(evento.target.value)} />
+            </Form.Group>
+          </Col>
+        </Row>
+        <Button type="submit">Publicar reseña</Button>
+      </Form>
+      {resenas.length === 0 ? (
+        <p className="text-secondary">Todavía no hay reseñas en la carta.</p>
+      ) : (
+        <Table responsive size="sm">
+          <tbody>
+            {resenas.map((resena) => (
+              <tr key={resena.id}>
+                <td>{resena.autor}</td>
+                <td>{resena.calificacion}</td>
+                <td>{resena.texto}</td>
+                <td className="text-end">
+                  <Button size="sm" variant="outline-primary" type="button" onClick={() => quitarResena(resena.id)}>Quitar</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
     </>
   )
 }

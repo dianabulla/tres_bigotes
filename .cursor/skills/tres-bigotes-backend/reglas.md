@@ -6,8 +6,8 @@
 - `fin` es `inicio` más la suma de `duracion_minutos` de los servicios.
 - Solape: el mismo colaborador no tiene dos citas activas (`pendiente` o `en_proceso`) que se crucen.
 - Transiciones: `pendiente` → `en_proceso` | `cancelada`; `en_proceso` → `completada` | `cancelada`. `completada` y `cancelada` no vuelven atrás.
-- Al pasar a `completada`, si hay productos de servicio que descuentan insumo, el descuento corre en la misma transacción. El alta de la visita clínica la confirma el colaborador; no se inventan notas.
-- La reserva pública no pide sesión. El teléfono es obligatorio y es la clave de la ficha: si ya existe en la sede, se reutiliza y se actualizan nombre y correo.
+- Al pasar a `completada`, cada servicio descuenta sus insumos. Si dos servicios de la cita usan el mismo insumo, las cantidades se suman y queda una sola salida. Si el stock no alcanza, la cita no cambia de estado. El alta de la visita clínica la confirma el colaborador; no se inventan notas.
+- La reserva pública no pide sesión. El orden es nombre, teléfono y correo, después el servicio, y solo entonces los profesionales con un hueco ese día. El teléfono es la clave de la ficha: si ya existe en la sede, se reutiliza y se actualizan nombre y correo. La categoría del servicio es obligatoria.
 - Los horarios públicos van de 08:00 a 20:00, cada 30 minutos, y el servicio debe terminar antes del cierre. Solo se ofrecen desde ahora y hasta 60 días. El precio y el fin se calculan en el servidor.
 
 ## Ficha

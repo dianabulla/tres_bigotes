@@ -1,0 +1,19 @@
+Options -Indexes
+RewriteEngine On
+RewriteBase /tres_bigotes/
+
+# El código y los secretos no se publican.
+RewriteRule ^(\.env|config|controllers|models|database|api|view|node_modules|docs|\.cursor)(/|$) - [F,L]
+
+# La API sigue en public/ y responde JSON.
+RewriteRule ^public(/|$) - [L]
+
+# Archivos de la interfaz generada.
+RewriteCond %{DOCUMENT_ROOT}/tres_bigotes/dist/$1 -f
+RewriteRule ^(.*)$ dist/$1 [L]
+
+# Raíz y rutas de React.
+RewriteRule ^$ dist/index.html [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . dist/index.html [L]

@@ -20,10 +20,12 @@ La interfaz oculta lo que el rol no usa. La API rechaza la acción igual si la p
 
 - Profesionales sin cupo máximo de licencias.
 - Vista por día, por semana y por colaborador.
+- El administrador arma el catálogo en la pantalla Servicios: nombre, categoría, duración, precio, activo y, si aplica, los insumos que consume cada cita.
 - Una cita guarda cliente, colaborador, uno o más servicios, inicio y fin.
 - Estados: `pendiente`, `en_proceso`, `completada`, `cancelada`.
 - Recordatorio al cliente y al profesional antes de la cita.
-- El cliente reserva en `/reservar` sin cuenta. Deja teléfono, nombre y correo. Si el teléfono ya está en la sede, se usa esa ficha.
+- La portada pública muestra el equipo con foto, las reseñas de la sede y el catálogo agrupado por categoría.
+- El cliente reserva en el inicio `/`, sin cuenta. Primero deja nombre, teléfono y correo, luego elige el servicio y ahí ve los profesionales con hora libre ese día. Si el teléfono ya está en la sede, se usa esa ficha.
 
 ### Hoja clínica
 
@@ -44,6 +46,7 @@ La interfaz oculta lo que el rol no usa. La API rechaza la acción igual si la p
 - Stock mínimo y alerta cuando el saldo baja de ese mínimo.
 - Cada entrada o salida es un movimiento. El saldo se actualiza en la misma transacción.
 - Una venta de producto descuenta stock en el acto.
+- El administrador indica, por servicio, qué insumos consume y en qué cantidad. Completar la cita registra esa salida. Si no hay stock, la cita no queda completada.
 
 ### Caja
 

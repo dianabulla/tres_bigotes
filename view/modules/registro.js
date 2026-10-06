@@ -6,6 +6,12 @@ export const modulos = [
     roles: ['administrador'],
   },
   {
+    id: 'servicios',
+    titulo: 'Servicios',
+    ruta: '/gestion/servicios',
+    roles: ['administrador'],
+  },
+  {
     id: 'agenda',
     titulo: 'Agenda',
     ruta: '/gestion/agenda',

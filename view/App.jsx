@@ -1,5 +1,5 @@
 import 'bootstrap/dist/css/bootstrap.min.css'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import CursorGlow from './components/CursorGlow'
 import Fondo from './components/Fondo'
 import Marco from './components/Marco'
@@ -13,6 +13,7 @@ import PaginaClinica from './modules/clinica/PaginaClinica'
 import PaginaColaboradores from './modules/colaboradores/PaginaColaboradores'
 import PaginaComisiones from './modules/colaboradores/PaginaComisiones'
 import PaginaInventario from './modules/inventario/PaginaInventario'
+import PaginaServicios from './modules/servicios/PaginaServicios'
 import { modulos } from './modules/registro'
 
 const paginas = {
@@ -22,6 +23,7 @@ const paginas = {
   comisiones: PaginaComisiones,
   inventario: PaginaInventario,
   caja: PaginaCaja,
+  servicios: PaginaServicios,
 }
 
 function RedirigirInicio() {
@@ -31,14 +33,18 @@ function RedirigirInicio() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
+  const conAmbiente = pathname === '/ingreso'
+
   return (
     <>
-    <Fondo />
-    <CursorGlow />
+    {conAmbiente && <Fondo />}
+    {conAmbiente && <CursorGlow />}
     <div className="app-capa">
     <Routes>
+      <Route path="/" element={<PaginaReserva />} />
+      <Route path="/reservar" element={<Navigate to="/" replace />} />
       <Route path="/ingreso" element={<PaginaIngreso />} />
-      <Route path="/reservar" element={<PaginaReserva />} />
       <Route element={<RutaPrivada />}>
         <Route element={<Marco />}>
           <Route path="gestion" element={<RedirigirInicio />} />
@@ -52,7 +58,7 @@ export default function App() {
           })}
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/ingreso" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </div>
     </>

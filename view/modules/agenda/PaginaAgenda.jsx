@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
-import { buscarClientes, cambiarEstadoCita, crearCita, guardarServicio, listarCitas, listarServicios } from '../../cliente/agenda'
+import { buscarClientes, cambiarEstadoCita, crearCita, listarCitas } from '../../cliente/agenda'
+import { listarServicios } from '../../cliente/servicios'
 import { useSesion } from '../../components/Sesion'
 
 const estados = {
@@ -8,14 +9,6 @@ const estados = {
   en_proceso: 'En proceso',
   completada: 'Completada',
   cancelada: 'Cancelada',
-}
-
-const servicioVacio = {
-  id: null,
-  nombre: '',
-  duracion_minutos: '30',
-  precio: '',
-  activo: true,
 }
 
 function diaIso(fecha) {
@@ -60,9 +53,6 @@ export default function PaginaAgenda() {
   const [errorReserva, setErrorReserva] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [clientes, setClientes] = useState([])
-  const [servicio, setServicio] = useState(null)
-  const [errorServicio, setErrorServicio] = useState('')
-
   const inicioRango = vista === 'semana' ? lunesDe(fecha) : fecha
   const finRango = sumarDias(inicioRango, vista === 'semana' ? 7 : 1)
   const dias = vista === 'semana'
@@ -152,22 +142,6 @@ export default function PaginaAgenda() {
     }
   }
 
-  async function guardarCatalogo(evento) {
-    evento.preventDefault()
-    setErrorServicio('')
-    setGuardando(true)
-    try {
-      await guardarServicio(servicio)
-      setServicio(null)
-      setAviso(servicio.id ? 'Servicio actualizado.' : 'Servicio creado.')
-      await cargarServicios()
-    } catch (fallo) {
-      setErrorServicio(fallo.message)
-    } finally {
-      setGuardando(false)
-    }
-  }
-
   function abrirReserva() {
     setErrorReserva('')
     setBusqueda('')
@@ -223,7 +197,6 @@ export default function PaginaAgenda() {
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Agenda</h1>
         <div className="d-flex flex-wrap gap-2">
-          {esAdmin && <Button variant="outline-primary" onClick={() => { setErrorServicio(''); setServicio({ ...servicioVacio }) }}>Servicios</Button>}
           {puedeReservar && <Button onClick={abrirReserva}>Nueva cita</Button>}
         </div>
       </div>
@@ -353,7 +326,7 @@ export default function PaginaAgenda() {
             <Form.Group className="mb-3">
               <Form.Label>Servicios</Form.Label>
               {servicios.filter((item) => item.activo).length === 0 ? (
-                <p className="text-secondary mb-0">Primero crea un servicio activo.</p>
+                <p className="text-secondary mb-0">No hay servicios activos. El catálogo se arma en Servicios.</p>
               ) : servicios.filter((item) => item.activo).map((item) => (
                 <Form.Check
                   key={item.id}
@@ -377,60 +350,6 @@ export default function PaginaAgenda() {
           <Modal.Footer>
             <Button variant="secondary" type="button" onClick={() => setReserva(null)}>Cancelar</Button>
             <Button type="submit" disabled={guardando || (reserva?.servicios.length ?? 0) === 0}>{guardando ? 'Guardando…' : 'Reservar'}</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-
-      <Modal show={servicio !== null} onHide={() => setServicio(null)} centered>
-        <Form onSubmit={guardarCatalogo}>
-          <Modal.Header closeButton>
-            <Modal.Title>{servicio?.id ? 'Editar servicio' : 'Servicios'}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {errorServicio && <Alert variant="danger">{errorServicio}</Alert>}
-            {!servicio?.id && servicios.length > 0 && (
-              <Table responsive size="sm" className="mb-3">
-                <tbody>
-                  {servicios.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.nombre}</td>
-                      <td>{item.duracion_minutos} min</td>
-                      <td>{item.precio}</td>
-                      <td>{item.activo ? '' : 'De baja'}</td>
-                      <td className="text-end">
-                        <Button size="sm" variant="outline-primary" type="button" onClick={() => setServicio({ ...item, duracion_minutos: String(item.duracion_minutos) })}>Editar</Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-            <Form.Group className="mb-3" controlId="nombreServicio">
-              <Form.Label>Nombre</Form.Label>
-              <Form.Control required maxLength={120} value={servicio?.nombre ?? ''} onChange={(evento) => setServicio((actual) => ({ ...actual, nombre: evento.target.value }))} />
-            </Form.Group>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3" controlId="duracion">
-                  <Form.Label>Minutos</Form.Label>
-                  <Form.Control type="number" min="1" max="720" required value={servicio?.duracion_minutos ?? ''} onChange={(evento) => setServicio((actual) => ({ ...actual, duracion_minutos: evento.target.value }))} />
-                </Form.Group>
-              </Col>
-              <Col>
-                <Form.Group className="mb-3" controlId="precioServicio">
-                  <Form.Label>Precio</Form.Label>
-                  <Form.Control type="number" min="0" step="0.01" required value={servicio?.precio ?? ''} onChange={(evento) => setServicio((actual) => ({ ...actual, precio: evento.target.value }))} />
-                </Form.Group>
-              </Col>
-            </Row>
-            {servicio?.id && (
-              <Form.Check id="servicioActivo" label="Servicio activo" checked={Boolean(servicio.activo)} onChange={(evento) => setServicio((actual) => ({ ...actual, activo: evento.target.checked }))} />
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            {servicio?.id && <Button variant="outline-primary" type="button" onClick={() => setServicio({ ...servicioVacio })}>Nuevo</Button>}
-            <Button variant="secondary" type="button" onClick={() => setServicio(null)}>Cerrar</Button>
-            <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
           </Modal.Footer>
         </Form>
       </Modal>

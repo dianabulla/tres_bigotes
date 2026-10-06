@@ -42,7 +42,7 @@ export default function PaginaIngreso() {
       <Card className="marca-tarjeta w-100" style={{ maxWidth: 420 }}>
         <Card.Body>
           <h1 className="visually-hidden">Tres Bigotes</h1>
-          <img src="/media/logo.jpeg" alt="" className="marca-logo-grande" />
+          <img src={`${import.meta.env.BASE_URL}media/logo.jpeg`} alt="" className="marca-logo-grande" />
           {error && <Alert variant="danger">{error}</Alert>}
           <Form onSubmit={enviar}>
             <Form.Group className="mb-3" controlId="correo">
@@ -70,7 +70,7 @@ export default function PaginaIngreso() {
             </Button>
           </Form>
           <p className="text-center mt-3 mb-0">
-            <Link to="/reservar">Reservar cita</Link>
+            <Link to="/">Volver al inicio</Link>
           </p>
         </Card.Body>
       </Card>

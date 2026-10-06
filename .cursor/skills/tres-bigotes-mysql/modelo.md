@@ -12,7 +12,9 @@ Orden de creación: catálogos de sede, personas, agenda, dinero, inventario.
 
 `sesion`: `id`, `usuario_id`, `token_hash` único, `expira_en`, `creado_en`.
 
-`colaborador`: `id`, `establecimiento_id`, `usuario_id` nulo y único, `nombre`, `telefono`, `activo`, `fecha_ingreso` (día, tipo `DATE`).
+`colaborador`: `id`, `establecimiento_id`, `usuario_id` nulo y único, `nombre`, `foto` nula, `telefono`, `activo`, `fecha_ingreso` (día, tipo `DATE`).
+
+`resena`: `id`, `establecimiento_id`, `autor`, `texto`, `calificacion` de 1 a 5, `creado_en`.
 
 ## Clientes y ficha
 
@@ -24,7 +26,9 @@ Orden de creación: catálogos de sede, personas, agenda, dinero, inventario.
 
 ## Agenda
 
-`servicio`: `id`, `establecimiento_id`, `nombre`, `duracion_minutos`, `precio`, `activo`.
+`servicio`: `id`, `establecimiento_id`, `nombre`, `categoria`, `duracion_minutos`, `precio`, `activo`.
+
+`servicio_insumo`: `id`, `servicio_id`, `producto_id`, `cantidad` positiva. Único (`servicio_id`, `producto_id`). Cuelga de `servicio`. El producto es un insumo de la misma sede.
 
 `cita`: `id`, `establecimiento_id`, `cliente_id`, `colaborador_id`, `inicio`, `fin`, `estado` (`pendiente`, `en_proceso`, `completada`, `cancelada`), `notas`.
 

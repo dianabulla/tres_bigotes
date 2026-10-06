@@ -13,6 +13,8 @@ use TresBigotes\Api\Router;
 use TresBigotes\Config\Conexion;
 use TresBigotes\Models\Cita;
 use TresBigotes\Models\Cliente;
+use TresBigotes\Models\Producto;
+use TresBigotes\Models\Resena;
 use TresBigotes\Models\Servicio;
 
 final class CitasController
@@ -39,17 +41,38 @@ final class CitasController
         if ($rol === 'colaborador') {
             Respuesta::json(403, ['error' => 'No tienes permiso para ver el catálogo de servicios']);
         }
-        Respuesta::json(200, ['servicios' => Servicio::listar($sede, $rol !== 'administrador')]);
+        $servicios = Servicio::listar($sede, $rol !== 'administrador');
+        if ($rol === 'administrador') {
+            $mapa = Servicio::insumosAgrupados($sede);
+            foreach ($servicios as $indice => $servicio) {
+                $servicios[$indice]['insumos'] = $mapa[$servicio['id']] ?? [];
+            }
+        }
+        Respuesta::json(200, ['servicios' => $servicios]);
     }
 
     public static function crearServicio(Peticion $peticion): void
     {
         $sede = self::exigirAdministrador($peticion);
         $datos = self::leerServicio($peticion->cuerpo, true);
+        $insumos = self::leerInsumos($peticion->cuerpo) ?? [];
         $pdo = Conexion::obtener();
-        $id = Servicio::crear($pdo, $sede, $datos);
+        $pdo->beginTransaction();
+        try {
+            self::validarInsumos($pdo, $sede, $insumos);
+            $id = Servicio::crear($pdo, $sede, $datos);
+            Servicio::reemplazarInsumos($pdo, $id, $insumos);
+            $pdo->commit();
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
         $fila = Servicio::bloquear($pdo, $sede, $id);
-        Respuesta::json(200, ['servicio' => Servicio::presentar($fila ?? [])]);
+        $servicio = Servicio::presentar($fila ?? []);
+        $servicio['insumos'] = Servicio::insumosAgrupados($sede)[$id] ?? [];
+        Respuesta::json(200, ['servicio' => $servicio]);
     }
 
     public static function actualizarServicio(Peticion $peticion): void
@@ -61,9 +84,27 @@ final class CitasController
             Respuesta::json(404, ['error' => 'Servicio no encontrado']);
         }
         $datos = self::leerServicio($peticion->cuerpo, false);
-        Servicio::actualizar($pdo, $sede, $id, $datos);
+        $insumos = self::leerInsumos($peticion->cuerpo);
+        $pdo->beginTransaction();
+        try {
+            if ($insumos !== null) {
+                self::validarInsumos($pdo, $sede, $insumos);
+            }
+            Servicio::actualizar($pdo, $sede, $id, $datos);
+            if ($insumos !== null) {
+                Servicio::reemplazarInsumos($pdo, $id, $insumos);
+            }
+            $pdo->commit();
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
         $fila = Servicio::bloquear($pdo, $sede, $id);
-        Respuesta::json(200, ['servicio' => Servicio::presentar($fila ?? [])]);
+        $servicio = Servicio::presentar($fila ?? []);
+        $servicio['insumos'] = Servicio::insumosAgrupados($sede)[$id] ?? [];
+        Respuesta::json(200, ['servicio' => $servicio]);
     }
 
     public static function buscarClientes(Peticion $peticion): void
@@ -229,6 +270,13 @@ final class CitasController
                 Respuesta::json(422, ['error' => 'Esa cita no puede pasar a ese estado']);
             }
             Cita::cambiarEstado($pdo, $sede, $id, $estado);
+            if ($estado === 'completada') {
+                $faltante = Servicio::consumirInsumos($pdo, $sede, $id, (int) $peticion->usuario['id']);
+                if ($faltante !== null) {
+                    $pdo->rollBack();
+                    Respuesta::json(422, ['error' => 'No hay stock de ' . $faltante . ' para completar la cita']);
+                }
+            }
             $pdo->commit();
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
@@ -246,6 +294,7 @@ final class CitasController
             'sede' => $sede['nombre'],
             'servicios' => Servicio::listar($sede['id'], true),
             'profesionales' => Cita::profesionales($sede['id']),
+            'resenas' => Resena::listar($sede['id']),
         ]);
     }
 
@@ -277,7 +326,8 @@ final class CitasController
         if (!is_string($colaboradorId) || !ctype_digit($colaboradorId)) {
             Respuesta::json(404, ['error' => 'Profesional no encontrado']);
         }
-        $servicios = self::idsServicio(self::listaServicios($_GET['servicios'] ?? ''));
+        $lista = self::listaServicios($_GET['servicios'] ?? '');
+        $servicios = $lista === [] ? [] : self::idsServicio($lista);
         $profesionalValido = false;
         foreach (Cita::profesionales($sede['id']) as $profesional) {
             if ($profesional['id'] === (int) $colaboradorId) {
@@ -287,7 +337,7 @@ final class CitasController
         if (!$profesionalValido) {
             Respuesta::json(404, ['error' => 'Profesional no encontrado']);
         }
-        $minutos = self::minutosActivos($sede['id'], $servicios);
+        $minutos = $servicios === [] ? 30 : self::minutosActivos($sede['id'], $servicios);
         if (!self::diaReservable($fecha)) {
             Respuesta::json(200, ['horarios' => []]);
         }
@@ -565,6 +615,10 @@ final class CitasController
         if ($precio === null) {
             Respuesta::json(422, ['error' => 'El precio del servicio no puede ser negativo']);
         }
+        $categoria = trim((string) ($cuerpo['categoria'] ?? ''));
+        if ($categoria === '' || mb_strlen($categoria) > 60) {
+            Respuesta::json(422, ['error' => 'Indica la categoría del servicio']);
+        }
         $activo = true;
         if (!$esAlta) {
             $activo = self::booleano($cuerpo['activo'] ?? null);
@@ -574,10 +628,62 @@ final class CitasController
         }
         return [
             'nombre' => $nombre,
+            'categoria' => $categoria,
             'duracion_minutos' => (int) $duracion,
             'precio' => $precio,
             'activo' => $activo,
         ];
+    }
+
+    private static function leerInsumos(array $cuerpo): ?array
+    {
+        if (!array_key_exists('insumos', $cuerpo)) {
+            return null;
+        }
+        $valor = $cuerpo['insumos'];
+        if (!is_array($valor)) {
+            Respuesta::json(422, ['error' => 'Los insumos del servicio no son válidos']);
+        }
+        $lineas = [];
+        foreach ($valor as $linea) {
+            if (!is_array($linea)) {
+                Respuesta::json(422, ['error' => 'Los insumos del servicio no son válidos']);
+            }
+            $productoId = $linea['producto_id'] ?? null;
+            $cantidad = $linea['cantidad'] ?? null;
+            if (!is_numeric($productoId) || (int) $productoId < 1 || (int) $productoId != $productoId) {
+                Respuesta::json(422, ['error' => 'Elige un insumo activo de esta sede']);
+            }
+            if (!is_numeric($cantidad) || (int) $cantidad < 1 || (int) $cantidad != $cantidad || (int) $cantidad > 9999) {
+                Respuesta::json(422, ['error' => 'La cantidad del insumo debe ser entre 1 y 9999']);
+            }
+            $lineas[] = [
+                'producto_id' => (int) $productoId,
+                'cantidad' => (int) $cantidad,
+            ];
+        }
+        return $lineas;
+    }
+
+    private static function validarInsumos(PDO $pdo, int $sede, array $lineas): void
+    {
+        $vistos = [];
+        foreach ($lineas as $linea) {
+            $producto = Producto::buscar($sede, $linea['producto_id']);
+            if ($producto === null || $producto['tipo'] !== 'insumo' || (int) $producto['activo'] !== 1) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                Respuesta::json(422, ['error' => 'Elige un insumo activo de esta sede']);
+            }
+            if (isset($vistos[$linea['producto_id']])) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                Respuesta::json(422, ['error' => 'Un servicio no puede repetir el mismo insumo']);
+            }
+            $vistos[$linea['producto_id']] = true;
+        }
     }
 
     private static function idsServicio($valor): array

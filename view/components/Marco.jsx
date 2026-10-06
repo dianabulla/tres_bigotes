@@ -9,26 +9,25 @@ export default function Marco() {
 
   return (
     <>
-      <Navbar expand="lg" className="marca px-3">
-        <Navbar.Brand as={NavLink} to="/gestion" className="py-1">
-          <img src="/media/logo.jpeg" alt="3 Bigotes" className="marca-logo" />
+      <Navbar className="marca px-3 py-2">
+        <Navbar.Brand as={NavLink} to="/gestion" className="py-1 me-3">
+          <img src={`${import.meta.env.BASE_URL}media/logo.jpeg`} alt="3 Bigotes" className="marca-logo" />
         </Navbar.Brand>
-        <Navbar.Toggle aria-controls="menu-gestion" />
-        <Navbar.Collapse id="menu-gestion">
-          <Nav className="me-auto">
-            {visibles.map((modulo) => (
-              <Nav.Link as={NavLink} key={modulo.id} to={modulo.ruta}>
-                {modulo.titulo}
-              </Nav.Link>
-            ))}
-          </Nav>
-          <Navbar.Text className="me-3">
+        <Nav className="marca-modulos flex-row flex-wrap">
+          {visibles.map((modulo) => (
+            <Nav.Link as={NavLink} key={modulo.id} to={modulo.ruta}>
+              {modulo.titulo}
+            </Nav.Link>
+          ))}
+        </Nav>
+        <div className="d-flex align-items-center gap-3 ms-lg-auto">
+          <Navbar.Text className="mb-0">
             {usuario.nombre} · {usuario.rol}
           </Navbar.Text>
           <Button variant="outline-primary" size="sm" onClick={salir}>
             Salir
           </Button>
-        </Navbar.Collapse>
+        </div>
       </Navbar>
       <Container fluid className="py-4">
         <Outlet />

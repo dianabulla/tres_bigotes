@@ -11,6 +11,7 @@ use TresBigotes\Api\Respuesta;
 use TresBigotes\Api\Router;
 use TresBigotes\Config\Conexion;
 use TresBigotes\Models\Colaborador;
+use TresBigotes\Models\Resena;
 use TresBigotes\Models\Usuario;
 
 final class ColaboradoresController
@@ -21,6 +22,10 @@ final class ColaboradoresController
         $router->registrar('GET', '/api/colaboradores/{id}', [self::class, 'ver']);
         $router->registrar('POST', '/api/colaboradores', [self::class, 'crear']);
         $router->registrar('PUT', '/api/colaboradores/{id}', [self::class, 'actualizar']);
+        $router->registrar('POST', '/api/colaboradores/{id}/foto', [self::class, 'foto']);
+        $router->registrar('GET', '/api/resenas', [self::class, 'listarResenas']);
+        $router->registrar('POST', '/api/resenas', [self::class, 'crearResena']);
+        $router->registrar('DELETE', '/api/resenas/{id}', [self::class, 'eliminarResena']);
     }
 
     public static function listar(Peticion $peticion): void
@@ -105,6 +110,98 @@ final class ColaboradoresController
         }
         $fila = Colaborador::buscar($sede, $id);
         Respuesta::json(200, ['colaborador' => Colaborador::presentar($fila)]);
+    }
+
+    public static function foto(Peticion $peticion): void
+    {
+        $sede = self::exigirAdministrador($peticion);
+        $id = self::id($peticion);
+        if (Colaborador::buscar($sede, $id) === null) {
+            Respuesta::json(404, ['error' => 'Colaborador no encontrado']);
+        }
+        $archivo = $_FILES['foto'] ?? null;
+        if (!is_array($archivo) || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            Respuesta::json(422, ['error' => 'Adjunta la foto del profesional']);
+        }
+        if (($archivo['size'] ?? 0) > 2000000) {
+            Respuesta::json(422, ['error' => 'La foto debe pesar menos de 2 MB']);
+        }
+        $temporal = (string) ($archivo['tmp_name'] ?? '');
+        $info = @getimagesize($temporal);
+        $tipos = [
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+            IMAGETYPE_WEBP => 'webp',
+        ];
+        $tipo = is_array($info) ? ($info[2] ?? 0) : 0;
+        if (!isset($tipos[$tipo])) {
+            Respuesta::json(422, ['error' => 'La foto debe ser JPG, PNG o WebP']);
+        }
+        $extension = $tipos[$tipo];
+        $directorio = dirname(__DIR__) . '/public/archivos/equipo';
+        if (!is_dir($directorio) && !mkdir($directorio, 0775, true) && !is_dir($directorio)) {
+            Respuesta::json(500, ['error' => 'Error interno']);
+        }
+        foreach (['jpg', 'png', 'webp'] as $otra) {
+            $vieja = $directorio . '/' . $id . '.' . $otra;
+            if ($otra !== $extension && is_file($vieja)) {
+                unlink($vieja);
+            }
+        }
+        $destino = $directorio . '/' . $id . '.' . $extension;
+        if (!move_uploaded_file($temporal, $destino)) {
+            Respuesta::json(500, ['error' => 'Error interno']);
+        }
+        $ruta = 'archivos/equipo/' . $id . '.' . $extension;
+        Colaborador::guardarFoto(Conexion::obtener(), $sede, $id, $ruta);
+        Respuesta::json(200, ['foto' => $ruta]);
+    }
+
+    public static function listarResenas(Peticion $peticion): void
+    {
+        $sede = self::exigirAdministrador($peticion);
+        Respuesta::json(200, ['resenas' => Resena::listar($sede)]);
+    }
+
+    public static function crearResena(Peticion $peticion): void
+    {
+        $sede = self::exigirAdministrador($peticion);
+        $autor = trim((string) ($peticion->cuerpo['autor'] ?? ''));
+        $texto = trim((string) ($peticion->cuerpo['texto'] ?? ''));
+        $nota = $peticion->cuerpo['calificacion'] ?? null;
+        if ($autor === '' || mb_strlen($autor) > 80) {
+            Respuesta::json(422, ['error' => 'Escribe el nombre de quien dejó la reseña']);
+        }
+        if (mb_strlen($texto) < 8 || mb_strlen($texto) > 400) {
+            Respuesta::json(422, ['error' => 'La reseña debe tener entre 8 y 400 caracteres']);
+        }
+        if (!is_int($nota) && !(is_string($nota) && ctype_digit($nota))) {
+            Respuesta::json(422, ['error' => 'La calificación va de 1 a 5']);
+        }
+        $nota = (int) $nota;
+        if ($nota < 1 || $nota > 5) {
+            Respuesta::json(422, ['error' => 'La calificación va de 1 a 5']);
+        }
+        $id = Resena::crear(Conexion::obtener(), $sede, [
+            'autor' => $autor,
+            'texto' => $texto,
+            'calificacion' => $nota,
+            'creado_en' => (new DateTime('now'))->format('Y-m-d H:i:s'),
+        ]);
+        Respuesta::json(200, ['id' => $id]);
+    }
+
+    public static function eliminarResena(Peticion $peticion): void
+    {
+        $sede = self::exigirAdministrador($peticion);
+        $id = $peticion->params['id'] ?? '';
+        if (!is_string($id) || !ctype_digit($id) || (int) $id < 1) {
+            Respuesta::json(404, ['error' => 'Reseña no encontrada']);
+        }
+        if (!Resena::eliminar(Conexion::obtener(), $sede, (int) $id)) {
+            Respuesta::json(404, ['error' => 'Reseña no encontrada']);
+        }
+        Respuesta::json(200, ['ok' => true]);
     }
 
     private static function exigirAdministrador(Peticion $peticion): int
