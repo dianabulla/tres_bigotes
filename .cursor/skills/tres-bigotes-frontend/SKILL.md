@@ -29,6 +29,9 @@ view/
     agenda/
     clinica/
     colaboradores/
+    sedes/
+    usuarios/
+    roles/
     servicios/
     inventario/
     caja/

@@ -134,19 +134,12 @@ final class InventarioController
 
     private static function exigirConsulta(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol !== 'administrador' && $rol !== 'recepcion') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para consultar el inventario']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigirAlguno($peticion, ['inventario', 'inventario.consulta'], 'No tienes permiso para consultar el inventario');
     }
 
     private static function exigirAdministrador(Peticion $peticion): int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'administrador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para modificar el inventario']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigir($peticion, 'inventario', 'No tienes permiso para modificar el inventario');
     }
 
     private static function id(Peticion $peticion): int

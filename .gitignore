@@ -1,8 +1,12 @@
 node_modules
 dist
+dist-web
 dist-ssr
 *.local
 .DS_Store
 npm-debug.log*
 .env
 config/.env
+config/.env.produccion
+subir/
+3bigotes-para-subir.zip

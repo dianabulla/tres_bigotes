@@ -12,7 +12,10 @@ use TresBigotes\Controllers\ClinicaController;
 use TresBigotes\Controllers\ColaboradoresController;
 use TresBigotes\Controllers\ComisionesController;
 use TresBigotes\Controllers\InventarioController;
+use TresBigotes\Controllers\RolesController;
+use TresBigotes\Controllers\SedesController;
 use TresBigotes\Controllers\SesionController;
+use TresBigotes\Controllers\UsuariosController;
 
 function registrarRutas(Router $router): void
 {
@@ -38,4 +41,7 @@ function registrarRutas(Router $router): void
     ComisionesController::registrar($router);
     InventarioController::registrar($router);
     CajaController::registrar($router);
+    SedesController::registrar($router);
+    UsuariosController::registrar($router);
+    RolesController::registrar($router);
 }

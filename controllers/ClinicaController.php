@@ -77,6 +77,12 @@ final class ClinicaController
         $sede = self::exigirConsulta($peticion);
         $id = self::id($peticion);
         $profesional = self::profesionalPropio($peticion, $sede);
+        if ($profesional === null && Acceso::tiene($peticion, 'clinica.propia')) {
+            $vinculo = Cita::profesionalDeUsuario($sede, (int) $peticion->usuario['id']);
+            if (is_array($vinculo) && $vinculo['activo']) {
+                $profesional = $vinculo['id'];
+            }
+        }
         if ($profesional === null) {
             Respuesta::json(403, ['error' => 'La nota la escribe el profesional de la cita']);
         }
@@ -162,17 +168,16 @@ final class ClinicaController
 
     private static function exigirConsulta(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol !== 'administrador' && $rol !== 'recepcion' && $rol !== 'colaborador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para ver la ficha']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigirAlguno(
+            $peticion,
+            ['clinica', 'clinica.consulta', 'clinica.propia'],
+            'No tienes permiso para ver la ficha'
+        );
     }
 
     private static function exigirEdicion(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol === 'recepcion') {
+        if (!Acceso::tiene($peticion, 'clinica') && !Acceso::tiene($peticion, 'clinica.propia')) {
             Respuesta::json(403, ['error' => 'No tienes permiso para modificar la ficha']);
         }
         return self::exigirConsulta($peticion);
@@ -180,7 +185,8 @@ final class ClinicaController
 
     private static function profesionalPropio(Peticion $peticion, int $sede): ?int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'colaborador') {
+        $amplia = Acceso::tiene($peticion, 'clinica') || Acceso::tiene($peticion, 'clinica.consulta');
+        if ($amplia || !Acceso::tiene($peticion, 'clinica.propia')) {
             return null;
         }
         $profesional = Cita::profesionalDeUsuario($sede, (int) $peticion->usuario['id']);

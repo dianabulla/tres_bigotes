@@ -8,6 +8,16 @@
 | `POST /api/sesion` | público | Login. Cuerpo: `correo`, `clave` |
 | `GET /api/sesion` | token | Devuelve el usuario de la sesión |
 | `DELETE /api/sesion` | token | Cierra esa sesión |
+| `GET /api/sedes` | permiso `sedes` | Catálogo de sedes. Marca cuál es la de la sesión |
+| `POST /api/sedes` | permiso `sedes` | Crea la sede y su primer administrador en la misma operación |
+| `PUT /api/sedes/{id}` | permiso `sedes` | Nombre, dirección, teléfono y baja. No baja la sede de la sesión |
+| `GET /api/usuarios` | permiso `usuarios` | Usuarios de su sede y los roles que se les pueden asignar |
+| `POST /api/usuarios` | permiso `usuarios` | Alta en su sede con cualquier rol existente |
+| `PUT /api/usuarios/{id}` | permiso `usuarios` | Nombre, correo, rol, baja y clave opcional |
+| `GET /api/roles` | permiso `roles` | Roles, sus permisos y el catálogo para marcarlos |
+| `POST /api/roles` | permiso `roles` | Crea un rol con nombre y permisos |
+| `PUT /api/roles/{id}` | permiso `roles` | Cambia el nombre y los permisos. El administrador conserva sedes, usuarios y roles |
+| `DELETE /api/roles/{id}` | permiso `roles` | Borra un rol que no es del sistema y no tiene usuarios |
 | `GET /api/colaboradores` | administrador | Lista el personal de su sede |
 | `GET /api/colaboradores/{id}` | administrador | Un colaborador de su sede. Otra sede o un id inexistente: `404` |
 | `POST /api/colaboradores` | administrador | Alta. Cuerpo: `nombre`, `telefono`, `fecha_ingreso`, `correo`, `clave` |
@@ -52,6 +62,10 @@ La baja no borra la fila: `activo` pasa a falso y, si tiene usuario, ese usuario
 Errores: `401` sesión inválida, `403` sin permiso de rol, `422` cuerpo inválido, `500` fallo interno sin detalle de SQL.
 
 Todas las carpetas de módulo ya tienen rutas.
+
+## Estado — 8 de octubre de 2026
+
+Hecho: sedes y usuarios sobre las tablas que ya existían. Crear una sede crea su administrador. Una sede de baja no deja entrar. El usuario no se baja a sí mismo y la sede no se queda sin alguien que pueda administrar usuarios. Los permisos de cada rol salen de `rol_permiso`. Se pueden crear roles y marcar permisos. El menú y cada acción usan esa lista.
 
 ## Estado — 6 de octubre de 2026
 

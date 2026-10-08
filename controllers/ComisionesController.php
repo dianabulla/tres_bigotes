@@ -197,24 +197,17 @@ final class ComisionesController
 
     private static function exigirConsulta(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol !== 'administrador' && $rol !== 'colaborador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para ver las comisiones']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigirAlguno($peticion, ['comisiones', 'comisiones.propias'], 'No tienes permiso para ver las comisiones');
     }
 
     private static function exigirAdministrador(Peticion $peticion): int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'administrador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para liquidar comisiones']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigir($peticion, 'comisiones', 'No tienes permiso para liquidar comisiones');
     }
 
     private static function profesionalPropio(Peticion $peticion, int $sede): ?int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'colaborador') {
+        if (Acceso::tiene($peticion, 'comisiones') || !Acceso::tiene($peticion, 'comisiones.propias')) {
             return null;
         }
         $profesional = Cita::profesionalDeUsuario($sede, (int) $peticion->usuario['id']);

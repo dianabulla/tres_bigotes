@@ -11,11 +11,12 @@ final class Sesion
     public static function buscarActiva(string $tokenHash): ?array
     {
         $consulta = Conexion::obtener()->prepare(
-            'SELECT u.id, u.nombre, u.establecimiento_id, r.codigo AS rol
+            'SELECT u.id, u.nombre, u.establecimiento_id, u.rol_id, r.codigo AS rol, r.nombre AS rol_nombre
              FROM sesion s
              INNER JOIN usuario u ON u.id = s.usuario_id
              INNER JOIN rol r ON r.id = u.rol_id
-             WHERE s.token_hash = :hash AND s.expira_en > :ahora AND u.activo = 1
+             INNER JOIN establecimiento e ON e.id = u.establecimiento_id
+             WHERE s.token_hash = :hash AND s.expira_en > :ahora AND u.activo = 1 AND e.activo = 1
              LIMIT 1'
         );
         $consulta->execute([
@@ -30,7 +31,9 @@ final class Sesion
             'id' => (int) $usuario['id'],
             'nombre' => $usuario['nombre'],
             'rol' => $usuario['rol'],
+            'rol_nombre' => $usuario['rol_nombre'] !== '' ? $usuario['rol_nombre'] : $usuario['rol'],
             'establecimiento_id' => (int) $usuario['establecimiento_id'],
+            'permisos' => Permiso::codigosDeRol((int) $usuario['rol_id']),
         ];
     }
 

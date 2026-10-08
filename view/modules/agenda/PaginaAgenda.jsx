@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'rea
 import { buscarClientes, cambiarEstadoCita, crearCita, listarCitas } from '../../cliente/agenda'
 import { listarServicios } from '../../cliente/servicios'
 import { useSesion } from '../../components/Sesion'
+import { tienePermiso } from '../registro'
 
 const estados = {
   pendiente: 'Pendiente',
@@ -36,8 +37,7 @@ function hora(valor) {
 
 export default function PaginaAgenda() {
   const { usuario } = useSesion()
-  const esAdmin = usuario.rol === 'administrador'
-  const puedeReservar = esAdmin || usuario.rol === 'recepcion'
+  const puedeReservar = tienePermiso(usuario, 'agenda')
   const hoy = diaIso(new Date())
   const [vista, setVista] = useState('dia')
   const [fecha, setFecha] = useState(hoy)

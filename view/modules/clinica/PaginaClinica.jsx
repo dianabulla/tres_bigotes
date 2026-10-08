@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert, Button, Form, Spinner } from 'react-bootstrap'
 import { buscarClinica, guardarFicha, guardarNota, verClinica } from '../../cliente/clinica'
 import { useSesion } from '../../components/Sesion'
+import { tienePermiso } from '../registro'
 
 const fichaVacia = {
   preferencias: '',
@@ -11,8 +12,10 @@ const fichaVacia = {
 
 export default function PaginaClinica() {
   const { usuario } = useSesion()
-  const esProfesional = usuario.rol === 'colaborador'
-  const puedeEditar = usuario.rol === 'administrador' || esProfesional
+  const veTodas = tienePermiso(usuario, 'clinica') || tienePermiso(usuario, 'clinica.consulta')
+  const anota = tienePermiso(usuario, 'clinica.propia')
+  const esProfesional = anota && !veTodas
+  const puedeEditar = tienePermiso(usuario, 'clinica') || anota
   const [busqueda, setBusqueda] = useState('')
   const [clientes, setClientes] = useState([])
   const [detalle, setDetalle] = useState(null)
@@ -156,7 +159,7 @@ export default function PaginaClinica() {
             </Form.Group>
             {puedeEditar && <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar ficha'}</Button>}
           </Form>
-          {esProfesional && (
+          {anota && (
             <Form onSubmit={anotar} className="mb-4">
               <h2 className="h4">Nota de la visita</h2>
               {detalle.visitas.length === 0 ? (

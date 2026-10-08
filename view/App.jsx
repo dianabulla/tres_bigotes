@@ -13,7 +13,10 @@ import PaginaClinica from './modules/clinica/PaginaClinica'
 import PaginaColaboradores from './modules/colaboradores/PaginaColaboradores'
 import PaginaComisiones from './modules/colaboradores/PaginaComisiones'
 import PaginaInventario from './modules/inventario/PaginaInventario'
+import PaginaRoles from './modules/roles/PaginaRoles'
+import PaginaSedes from './modules/sedes/PaginaSedes'
 import PaginaServicios from './modules/servicios/PaginaServicios'
+import PaginaUsuarios from './modules/usuarios/PaginaUsuarios'
 import { modulos } from './modules/registro'
 
 const paginas = {
@@ -24,11 +27,14 @@ const paginas = {
   inventario: PaginaInventario,
   caja: PaginaCaja,
   servicios: PaginaServicios,
+  sedes: PaginaSedes,
+  usuarios: PaginaUsuarios,
+  roles: PaginaRoles,
 }
 
 function RedirigirInicio() {
   const { usuario } = useSesion()
-  const destino = modulos.find((modulo) => modulo.roles.includes(usuario.rol))
+  const destino = modulos.find((modulo) => modulo.permisos.some((codigo) => (usuario.permisos ?? []).includes(codigo)))
   return <Navigate to={destino ? destino.ruta : '/ingreso'} replace />
 }
 
@@ -51,7 +57,7 @@ export default function App() {
           {modulos.map((modulo) => {
             const Pagina = paginas[modulo.id]
             return (
-              <Route key={modulo.id} path={modulo.ruta.slice(1)} element={<RutaPrivada roles={modulo.roles} />}>
+              <Route key={modulo.id} path={modulo.ruta.slice(1)} element={<RutaPrivada permisos={modulo.permisos} />}>
                 <Route index element={<Pagina />} />
               </Route>
             )

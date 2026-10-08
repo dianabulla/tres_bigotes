@@ -1,5 +1,16 @@
 # Reglas de negocio
 
+## Sedes y cuentas
+
+- Crear una sede guarda el establecimiento y su primer administrador en la misma operación. Si el correo ya existe, no queda la sede.
+- El catálogo de sedes lo ve cualquier administrador. La agenda, la caja y los clientes siguen filtrados por la sede de la sesión.
+- No se da de baja la sede con la que se entró. Una sede inactiva no abre sesión.
+- En Usuarios se asigna cualquier rol existente. El rol `colaborador` también puede nacer en Colaboradores.
+- Un rol nuevo guarda nombre y permisos en la misma operación. Hace falta al menos un permiso. El administrador de sistema conserva sedes, usuarios y roles. Un rol de sistema no se borra. Un rol con usuarios asignados tampoco.
+- Quien edita su propio rol no puede quitarse el permiso de administrar roles.
+- Quien está dentro no cambia su propio rol ni se da de baja. La sede conserva al menos un administrador activo.
+- La clave nueva, si se envía, tiene al menos 8 caracteres. Un correo repetido responde `422`.
+
 ## Citas
 
 - Servicios y colaborador deben ser del mismo establecimiento y estar activos.

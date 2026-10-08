@@ -51,7 +51,7 @@ El único HTML de la aplicación es `view/index.html`. Las pantallas son JSX en 
 
 Módulos: agendamiento, hoja clínica, colaboradores y comisiones, inventario, apertura y cierre de caja.
 
-Roles: `administrador`, `recepcion`, `colaborador`.
+Roles: `administrador`, `recepcion` y `colaborador` son del sistema. Se pueden crear más y asignarles permisos del catálogo.
 
 Fuera del producto: hosting, dominio y el contrato de arrendamiento entre Innovatyp y el cliente.
 

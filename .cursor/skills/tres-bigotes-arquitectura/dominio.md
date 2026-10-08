@@ -4,15 +4,23 @@
 
 Cada sucursal es un `establecimiento`. Agenda, clientes, inventario, caja y comisiones no se comparten entre establecimientos. Toda consulta operativa filtra por el establecimiento de la sesión.
 
+El administrador ve el catálogo de sedes y crea una sede nueva junto con su primer administrador. Esa cuenta entra a su propia sede; desde la sede actual no se opera la agenda ni la caja de la otra. La carta pública usa la sede activa más antigua. Una sede de baja no deja entrar a sus usuarios.
+
 ## Roles
 
 | Rol | Hace |
 |---|---|
-| `administrador` | Configura servicios, personal, comisiones e inventario, y opera la caja de su sede |
+| `administrador` | Crea sedes, usuarios, roles, servicios, personal, comisiones e inventario, y opera la caja de su sede |
 | `recepcion` | Agenda citas, cobra, abre y cierra caja, vende productos |
 | `colaborador` | Ve su agenda, atiende la cita y escribe la ficha de la visita |
 
-La interfaz oculta lo que el rol no usa. La API rechaza la acción igual si la pantalla se fuerza.
+Esos tres no se borran. Se pueden crear otros roles y marcar, uno por uno, los permisos del catálogo: sedes, usuarios, roles, colaboradores, servicios, agenda completa o propia, ficha completa, de consulta o propia, comisiones completas o propias, inventario completo o de consulta, y caja. La interfaz oculta lo que el rol no tiene. La API rechaza la acción igual si la pantalla se fuerza. Un permiso propio solo alcanza las citas del profesional ligado a ese usuario.
+
+### Sedes y usuarios
+
+- El administrador crea una sede con nombre, dirección, teléfono y el administrador que va a entrar en ella.
+- En Usuarios da de alta o de baja cuentas de su sede y les asigna cualquier rol. En Roles crea roles y marca sus permisos. El acceso del profesional también se puede crear en Colaboradores.
+- No puede darse de baja a sí mismo ni dejar la sede sin un administrador activo.
 
 ## Módulos
 

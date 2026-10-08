@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
 import { anularLiquidacion, eliminarRegla, guardarRegla, liquidarComision, verComisiones, verLiquidacion } from '../../cliente/comisiones'
 import { useSesion } from '../../components/Sesion'
+import { tienePermiso } from '../registro'
 
 const reglaVacia = {
   id: null,
@@ -13,7 +14,7 @@ const reglaVacia = {
 
 export default function PaginaComisiones() {
   const { usuario } = useSesion()
-  const esAdmin = usuario.rol === 'administrador'
+  const esAdmin = tienePermiso(usuario, 'comisiones')
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')

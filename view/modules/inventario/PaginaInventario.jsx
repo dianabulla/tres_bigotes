@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
 import { guardarProducto, listarMovimientos, listarProductos, moverProducto } from '../../cliente/inventario'
 import { useSesion } from '../../components/Sesion'
+import { tienePermiso } from '../registro'
 
 const formularioVacio = {
   id: null,
@@ -23,7 +24,7 @@ const movimientoVacio = {
 
 export default function PaginaInventario() {
   const { usuario } = useSesion()
-  const esAdmin = usuario.rol === 'administrador'
+  const esAdmin = tienePermiso(usuario, 'inventario')
   const [lista, setLista] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')

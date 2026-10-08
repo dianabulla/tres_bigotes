@@ -36,13 +36,12 @@ final class CitasController
 
     public static function listarServicios(Peticion $peticion): void
     {
-        $sede = self::exigirAgenda($peticion);
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol === 'colaborador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para ver el catálogo de servicios']);
-        }
-        $servicios = Servicio::listar($sede, $rol !== 'administrador');
-        if ($rol === 'administrador') {
+        $catalogo = Acceso::tiene($peticion, 'servicios');
+        $sede = $catalogo
+            ? Acceso::exigir($peticion, 'servicios', 'No tienes permiso para ver el catálogo de servicios')
+            : Acceso::exigir($peticion, 'agenda', 'No tienes permiso para ver el catálogo de servicios');
+        $servicios = Servicio::listar($sede, !$catalogo);
+        if ($catalogo) {
             $mapa = Servicio::insumosAgrupados($sede);
             foreach ($servicios as $indice => $servicio) {
                 $servicios[$indice]['insumos'] = $mapa[$servicio['id']] ?? [];
@@ -527,33 +526,22 @@ final class CitasController
 
     private static function exigirAgenda(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol !== 'administrador' && $rol !== 'recepcion' && $rol !== 'colaborador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para ver la agenda']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigirAlguno($peticion, ['agenda', 'agenda.propia'], 'No tienes permiso para ver la agenda');
     }
 
     private static function exigirReserva(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol !== 'administrador' && $rol !== 'recepcion') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para reservar']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigir($peticion, 'agenda', 'No tienes permiso para reservar');
     }
 
     private static function exigirAdministrador(Peticion $peticion): int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'administrador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para configurar servicios']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigir($peticion, 'servicios', 'No tienes permiso para configurar servicios');
     }
 
     private static function profesionalPropio(Peticion $peticion, int $sede): ?int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'colaborador') {
+        if (Acceso::tiene($peticion, 'agenda') || !Acceso::tiene($peticion, 'agenda.propia')) {
             return null;
         }
         $profesional = Cita::profesionalDeUsuario($sede, (int) $peticion->usuario['id']);

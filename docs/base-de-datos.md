@@ -2,7 +2,7 @@
 
 Base `tres_bigotes`, charset `utf8mb4`, motor InnoDB. El dibujo de tablas está en el skill `tres-bigotes-mysql`, archivo `modelo.md`.
 
-Migraciones aplicadas: `database/migrations/001_inicial.sql`, `002_precio_compra.sql`, `003_medios_caja.sql`, `004_servicio_insumo.sql`, `005_categoria_servicio.sql` y `006_equipo_resena.sql`. Semilla de desarrollo, una sola vez sobre una base vacía: `database/seeds/desarrollo.sql`.
+Migraciones aplicadas: `database/migrations/001_inicial.sql`, `002_precio_compra.sql`, `003_medios_caja.sql`, `004_servicio_insumo.sql`, `005_categoria_servicio.sql`, `006_equipo_resena.sql` y `007_roles_permisos.sql`. Semilla de desarrollo, una sola vez sobre una base vacía: `database/seeds/desarrollo.sql`.
 
 En XAMPP:
 
@@ -14,6 +14,7 @@ C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\003_medi
 C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\004_servicio_insumo.sql
 C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\005_categoria_servicio.sql
 C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\006_equipo_resena.sql
+C:\xampp\mysql\bin\mysql.exe -u root --default-character-set=utf8mb4 tres_bigotes < database\migrations\007_roles_permisos.sql
 ```
 
 Una sede no puede tener dos turnos de caja abiertos: `turno_caja.abierto_clave` es única y solo se llena cuando el estado es `abierto`. `fecha_ingreso` del colaborador es un día (`DATE`). El resto de fechas de negocio son `DATETIME`.
@@ -29,6 +30,10 @@ Clave de los tres: `tresbigotes`. No son personas reales.
 | barbero@tresbigotes.local | colaborador |
 
 El barbero tiene fila en `colaborador` ligada a su usuario.
+
+## Estado — 8 de octubre de 2026
+
+Hecho: `rol` gana `nombre` y `sistema`. `permiso` es el catálogo y `rol_permiso` une cada rol con lo que puede hacer. Los tres roles de sistema quedan con los permisos que ya tenían.
 
 ## Estado — 6 de octubre de 2026
 

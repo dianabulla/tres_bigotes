@@ -3,46 +3,69 @@ export const modulos = [
     id: 'colaboradores',
     titulo: 'Colaboradores',
     ruta: '/gestion/colaboradores',
-    roles: ['administrador'],
+    permisos: ['colaboradores'],
+  },
+  {
+    id: 'sedes',
+    titulo: 'Sedes',
+    ruta: '/gestion/sedes',
+    permisos: ['sedes'],
+  },
+  {
+    id: 'usuarios',
+    titulo: 'Usuarios',
+    ruta: '/gestion/usuarios',
+    permisos: ['usuarios'],
+  },
+  {
+    id: 'roles',
+    titulo: 'Roles',
+    ruta: '/gestion/roles',
+    permisos: ['roles'],
   },
   {
     id: 'servicios',
     titulo: 'Servicios',
     ruta: '/gestion/servicios',
-    roles: ['administrador'],
+    permisos: ['servicios'],
   },
   {
     id: 'agenda',
     titulo: 'Agenda',
     ruta: '/gestion/agenda',
-    roles: ['administrador', 'recepcion', 'colaborador'],
+    permisos: ['agenda', 'agenda.propia'],
   },
   {
     id: 'clinica',
     titulo: 'Ficha clínica',
     ruta: '/gestion/clinica',
-    roles: ['administrador', 'recepcion', 'colaborador'],
+    permisos: ['clinica', 'clinica.consulta', 'clinica.propia'],
   },
   {
     id: 'comisiones',
     titulo: 'Comisiones',
     ruta: '/gestion/comisiones',
-    roles: ['administrador', 'colaborador'],
+    permisos: ['comisiones', 'comisiones.propias'],
   },
   {
     id: 'inventario',
     titulo: 'Inventario',
     ruta: '/gestion/inventario',
-    roles: ['administrador', 'recepcion'],
+    permisos: ['inventario', 'inventario.consulta'],
   },
   {
     id: 'caja',
     titulo: 'Caja',
     ruta: '/gestion/caja',
-    roles: ['administrador', 'recepcion'],
+    permisos: ['caja'],
   },
 ]
 
-export function modulosVisibles(rol) {
-  return modulos.filter((modulo) => modulo.roles.includes(rol))
+export function tienePermiso(usuario, codigo) {
+  return (usuario?.permisos ?? []).includes(codigo)
+}
+
+export function modulosVisibles(permisos) {
+  const lista = permisos ?? []
+  return modulos.filter((modulo) => modulo.permisos.some((codigo) => lista.includes(codigo)))
 }

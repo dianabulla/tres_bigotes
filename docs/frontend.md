@@ -6,20 +6,26 @@ Aplicación de gestión en `view/`. Bootstrap se carga en `view/App.jsx`. El men
 |---|---|
 | `/` | público. Es el inicio de la barbería y la reserva del cliente |
 | `/ingreso` | público, equipo |
-| `/gestion/colaboradores` | administrador. Es la pantalla de entrada de ese rol |
-| `/gestion/servicios` | administrador |
-| `/gestion/agenda` | administrador, recepción, colaborador |
-| `/gestion/clinica` | administrador, recepción, colaborador |
-| `/gestion/colaboradores` | administrador |
-| `/gestion/comisiones` | administrador, colaborador |
-| `/gestion/inventario` | administrador, recepción |
-| `/gestion/caja` | administrador, recepción |
+| `/gestion/colaboradores` | permiso `colaboradores`. Es la pantalla de entrada del administrador |
+| `/gestion/sedes` | permiso `sedes` |
+| `/gestion/usuarios` | permiso `usuarios` |
+| `/gestion/roles` | permiso `roles` |
+| `/gestion/servicios` | permiso `servicios` |
+| `/gestion/agenda` | permiso `agenda` o `agenda.propia` |
+| `/gestion/clinica` | permiso `clinica`, `clinica.consulta` o `clinica.propia` |
+| `/gestion/comisiones` | permiso `comisiones` o `comisiones.propias` |
+| `/gestion/inventario` | permiso `inventario` o `inventario.consulta` |
+| `/gestion/caja` | permiso `caja` |
+
+## Estado — 8 de octubre de 2026
+
+Hecho: pantallas Sedes, Usuarios y Roles. El menú usa los permisos que devuelve la sesión. Sedes crea otra sucursal y el administrador que entra a ella. Usuarios asigna un rol a cada cuenta de esta sede. Roles crea un rol y marca sus permisos. El acceso del profesional también se puede crear en Colaboradores. Este corte está publicado en `3bigotesbarberie.com`.
 
 ## Estado — 6 de octubre de 2026
 
-Hecho: la pantalla se ve en `http://localhost/tres_bigotes/`. `BrowserRouter` usa la base de Vite. Logo y video de ingreso, reserva y el marco apuntan a esa base. Para publicar un cambio de `view/` en Apache: `npm run build`.
+Hecho: la pantalla se ve en `http://localhost/tres_bigotes/`. `BrowserRouter` usa la base de Vite. Logo y video de ingreso, reserva y el marco apuntan a esa base. Para publicar un cambio de `view/` en Apache: `npm run build`. Para el dominio `3bigotesbarberie.com`: `npm run build:sitio` y se sube `dist-web/` como `dist/`. El `.htaccess` de ese dominio está en `deploy/`.
 
-El administrador entra en Colaboradores. El menú del marco queda siempre visible: Colaboradores, Servicios, Agenda, Ficha clínica, Comisiones, Inventario y Caja.
+El administrador entra en Colaboradores. En ese corte el menú era Colaboradores, Servicios, Agenda, Ficha clínica, Comisiones, Inventario y Caja.
 
 Servicios es el catálogo de la sede. El administrador crea y edita nombre, categoría, duración, precio y la receta de insumos, y puede dar de baja. Recepción y colaborador no entran a esa pantalla. La agenda solo elige servicios activos al reservar. Si al completar falta stock, el aviso de la agenda es el de la API.
 

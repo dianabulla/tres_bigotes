@@ -6,7 +6,11 @@ Orden de creación: catálogos de sede, personas, agenda, dinero, inventario.
 
 `establecimiento`: `id`, `nombre`, `direccion`, `telefono`, `activo`.
 
-`rol`: `id`, `codigo` único (`administrador`, `recepcion`, `colaborador`).
+`rol`: `id`, `codigo` único, `nombre`, `sistema`. Los de sistema son `administrador`, `recepcion` y `colaborador`. Se pueden crear otros.
+
+`permiso`: `id`, `codigo` único, `titulo`, `grupo`. Catálogo fijo de lo que una pantalla permite hacer.
+
+`rol_permiso`: `rol_id`, `permiso_id`. Un rol tiene varios permisos.
 
 `usuario`: `id`, `establecimiento_id`, `rol_id`, `nombre`, `correo` único, `password_hash`, `activo`.
 

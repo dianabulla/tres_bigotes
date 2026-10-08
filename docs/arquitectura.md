@@ -16,6 +16,8 @@ El navegador llama a `VITE_API_URL` (en local, `http://localhost/tres_bigotes/pu
 
 En local, `.htaccess` de la raíz muestra la interfaz generada y deja `public/` para la API. Las rutas de React (`/`, `/ingreso`, `/gestion`) vuelven a `dist/index.html`. Después de cambiar `view/`, hay que volver a generar con `npm run build` para verlo en Apache. El inicio `/` es la reserva pública. `/reservar` redirige ahí.
 
+En `3bigotesbarberie.com` el sitio vive en la raíz del dominio, no en `/tres_bigotes/`. `npm run build:sitio` genera `dist-web/` con esa base y con la API en `https://3bigotesbarberie.com/public`. En el hosting, esa carpeta se sube como `dist/`. El `.htaccess` de la raíz es `deploy/htaccess-raiz` y el de la API es `deploy/htaccess-public`. La clave de MySQL va solo en `config/.env` del servidor.
+
 El HTML y el PHP no comparten archivo. `view/` es el frontend. `public/`, `api/`, `controllers/`, `models/` y `config/` son PHP y responden JSON.
 
 Orden cuando un cambio cruza capas: migración, luego API, luego pantalla.
@@ -29,6 +31,10 @@ Orden cuando un cambio cruza capas: migración, luego API, luego pantalla.
 5. `DELETE /api/sesion` borra esa sesión.
 
 La sesión dura 12 horas. Zona horaria de la API: `America/Bogota`.
+
+## Estado — 8 de octubre de 2026
+
+Hecho: pantallas Sedes, Usuarios y Roles. La migración `007_roles_permisos.sql` agrega el nombre del rol y las tablas `permiso` y `rol_permiso`. Cada acción exige un permiso de esa lista. El corte está publicado en `3bigotesbarberie.com` con `deploy/htaccess-raiz`, `deploy/htaccess-public` y la interfaz de `npm run build:sitio`.
 
 ## Estado — 6 de octubre de 2026
 

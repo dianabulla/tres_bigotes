@@ -7,6 +7,7 @@ namespace TresBigotes\Controllers;
 use TresBigotes\Api\Peticion;
 use TresBigotes\Api\Respuesta;
 use TresBigotes\Api\Router;
+use TresBigotes\Models\Permiso;
 use TresBigotes\Models\Sesion;
 use TresBigotes\Models\Usuario;
 
@@ -32,6 +33,10 @@ final class SesionController
         if (!is_array($fila) || (int) $fila['activo'] !== 1 || !$claveValida) {
             Respuesta::json(401, ['error' => 'Correo o clave incorrectos']);
         }
+        if ((int) $fila['sede_activa'] !== 1) {
+            Respuesta::json(401, ['error' => 'Esta sede está de baja']);
+        }
+        $fila['permisos'] = Permiso::codigosDeRol((int) $fila['rol_id']);
 
         Respuesta::json(200, [
             'token' => Sesion::abrir((int) $fila['id']),

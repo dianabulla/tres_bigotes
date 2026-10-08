@@ -5,7 +5,7 @@ import { useSesion } from './Sesion'
 
 export default function Marco() {
   const { usuario, salir } = useSesion()
-  const visibles = modulosVisibles(usuario.rol)
+  const visibles = modulosVisibles(usuario.permisos)
 
   return (
     <>
@@ -22,7 +22,7 @@ export default function Marco() {
         </Nav>
         <div className="d-flex align-items-center gap-3 ms-lg-auto">
           <Navbar.Text className="mb-0">
-            {usuario.nombre} · {usuario.rol}
+            {usuario.nombre} · {usuario.rol_nombre || usuario.rol}
           </Navbar.Text>
           <Button variant="outline-primary" size="sm" onClick={salir}>
             Salir

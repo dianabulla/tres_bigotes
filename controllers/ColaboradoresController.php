@@ -206,10 +206,7 @@ final class ColaboradoresController
 
     private static function exigirAdministrador(Peticion $peticion): int
     {
-        if (($peticion->usuario['rol'] ?? '') !== 'administrador') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para gestionar colaboradores']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigir($peticion, 'colaboradores', 'No tienes permiso para gestionar colaboradores');
     }
 
     private static function id(Peticion $peticion): int

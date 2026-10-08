@@ -211,11 +211,7 @@ final class CajaController
 
     private static function exigirCaja(Peticion $peticion): int
     {
-        $rol = $peticion->usuario['rol'] ?? '';
-        if ($rol !== 'administrador' && $rol !== 'recepcion') {
-            Respuesta::json(403, ['error' => 'No tienes permiso para usar la caja']);
-        }
-        return (int) $peticion->usuario['establecimiento_id'];
+        return Acceso::exigir($peticion, 'caja', 'No tienes permiso para usar la caja');
     }
 
     private static function leerLineas(array $cuerpo): array
