@@ -21,6 +21,52 @@ const MARQUESINA = [
   'Productos premium',
 ]
 
+const REDES = [
+  {
+    nombre: 'Instagram',
+    href: 'https://www.instagram.com/3bigotesbarberia',
+    clase: 'red--instagram',
+    icono: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm10 1.8H7A2.2 2.2 0 0 0 4.8 7v10A2.2 2.2 0 0 0 7 19.2h10a2.2 2.2 0 0 0 2.2-2.2V7A2.2 2.2 0 0 0 17 4.8zM12 8.1A3.9 3.9 0 1 1 8.1 12 3.9 3.9 0 0 1 12 8.1zm0 1.6a2.3 2.3 0 1 0 2.3 2.3A2.3 2.3 0 0 0 12 9.7zM17.35 6.4a1.05 1.05 0 1 1-1.05 1.05 1.05 1.05 0 0 1 1.05-1.05z" />
+      </svg>
+    ),
+  },
+  {
+    nombre: 'Facebook',
+    href: 'https://www.facebook.com/3bigotesbarberia',
+    clase: 'red--facebook',
+    icono: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M14.2 21v-7.1h2.4l.4-2.8h-2.8V9.3c0-.8.2-1.4 1.4-1.4H17V5.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2h-2.4v2.8H11V21z" />
+      </svg>
+    ),
+  },
+  {
+    nombre: 'WhatsApp',
+    href: 'https://wa.me/573209651928?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%203%20Bigotes',
+    clase: 'red--whatsapp',
+    icono: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M12.1 3.2A8.7 8.7 0 0 0 4.7 16.3L3.6 20.4l4.2-1.1a8.7 8.7 0 0 0 4.3 1.1 8.7 8.7 0 0 0 0-17.4zm0 15.9a7.2 7.2 0 0 1-3.7-1l-.3-.2-2.5.7.7-2.4-.2-.3a7.2 7.2 0 1 1 6 3.2zm4-5.4c-.2-.1-1.3-.6-1.5-.7s-.3-.1-.5.1-.6.7-.7.9-.3.2-.5.1a5.9 5.9 0 0 1-1.7-1.1 6.5 6.5 0 0 1-1.2-1.5c-.1-.2 0-.3.1-.5l.3-.4.1-.2a.5.5 0 0 0 0-.5c0-.1-.5-1.2-.7-1.6s-.3-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1 4.8 4.8 0 0 0 1 2.5 11 11 0 0 0 4.2 3.7 4.7 4.7 0 0 0 2.4.7 2.6 2.6 0 0 0 1.7-.7 2.1 2.1 0 0 0 .5-1.5c0-.1 0-.3-.2-.4z" />
+      </svg>
+    ),
+  },
+]
+
+function Redes() {
+  return (
+    <div className="redes">
+      {REDES.map((red) => (
+        <a key={red.nombre} className={`red ${red.clase}`} href={red.href} target="_blank" rel="noopener noreferrer">
+          {red.icono}
+          <span>{red.nombre}</span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
 const ENLACES = [
   ['Inicio', '#inicio'],
   ['Barbería', '#barberia'],
@@ -274,6 +320,7 @@ export default function PaginaReserva() {
             </a>
             <a className="btn btn--ghost" href="#servicios">Ver servicios</a>
           </div>
+          <Redes />
           <dl className="hero__stats">
             {CIFRAS.map(([valor, etiqueta]) => (
               <div className="hero__stat" key={etiqueta}>
@@ -363,6 +410,7 @@ export default function PaginaReserva() {
 
       <section id="reserva" className="carta-seccion">
         <h2 className="carta-titulo">Reserva tu cita</h2>
+        <Redes />
         <div className="carta-reserva">
         {error && <Alert variant="danger">{error}</Alert>}
         {catalogo === null ? (
