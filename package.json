@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Sistema de gestión para la barbería Tres Bigotes",
+  "description": "Sistema de gestión para la barbería 3 Bigotes",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

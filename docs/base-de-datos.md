@@ -15,6 +15,7 @@ C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\004_serv
 C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\005_categoria_servicio.sql
 C:\xampp\mysql\bin\mysql.exe -u root tres_bigotes < database\migrations\006_equipo_resena.sql
 C:\xampp\mysql\bin\mysql.exe -u root --default-character-set=utf8mb4 tres_bigotes < database\migrations\007_roles_permisos.sql
+C:\xampp\mysql\bin\mysql.exe -u root --default-character-set=utf8mb4 tres_bigotes < database\migrations\008_nombre_3_bigotes.sql
 ```
 
 Una sede no puede tener dos turnos de caja abiertos: `turno_caja.abierto_clave` es única y solo se llena cuando el estado es `abierto`. `fecha_ingreso` del colaborador es un día (`DATE`). El resto de fechas de negocio son `DATETIME`.
@@ -33,7 +34,7 @@ El barbero tiene fila en `colaborador` ligada a su usuario.
 
 ## Estado — 8 de octubre de 2026
 
-Hecho: `rol` gana `nombre` y `sistema`. `permiso` es el catálogo y `rol_permiso` une cada rol con lo que puede hacer. Los tres roles de sistema quedan con los permisos que ya tenían.
+Hecho: `rol` gana `nombre` y `sistema`. `permiso` es el catálogo y `rol_permiso` une cada rol con lo que puede hacer. Los tres roles de sistema quedan con los permisos que ya tenían. `008_nombre_3_bigotes.sql` deja el nombre de las sedes escrito con el número 3.
 
 ## Estado — 6 de octubre de 2026
 

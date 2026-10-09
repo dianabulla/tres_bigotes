@@ -1,12 +1,12 @@
 ---
 name: tres-bigotes-frontend
 description: >-
-  Construye la interfaz Tres Bigotes con React, Vite, Bootstrap 5 y
+  Construye la interfaz 3 Bigotes con React, Vite, Bootstrap 5 y
   react-bootstrap. Úsala al crear pantallas, componentes, formularios, agenda,
   ficha, caja, inventario o estilos. No escribe SQL ni reglas de negocio.
 ---
 
-# Frontend Tres Bigotes
+# Frontend 3 Bigotes
 
 Solo `view/`. La interfaz muestra datos y envía intenciones. Quien calcula comisiones, stock, arqueo y permisos es la API.
 

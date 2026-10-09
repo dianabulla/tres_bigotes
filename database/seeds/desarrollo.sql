@@ -6,7 +6,7 @@ INSERT INTO rol (id, codigo) VALUES
   (3, 'colaborador');
 
 INSERT INTO establecimiento (id, nombre, direccion, telefono, activo) VALUES
-  (1, 'Barbería Tres Bigotes', 'Sede principal', '3000000000', 1);
+  (1, 'Barbería 3 Bigotes', 'Sede principal', '3000000000', 1);
 
 INSERT INTO usuario (id, establecimiento_id, rol_id, nombre, correo, password_hash, activo) VALUES
   (1, 1, 1, 'Administrador', 'admin@tresbigotes.local', '$2y$10$/AkFgMo1vCOnYIJGmRj8Vudf5Vh138qclEGVV2MSA34voCshpV/2i', 1),

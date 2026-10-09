@@ -1,16 +1,16 @@
 ---
 name: tres-bigotes-arquitectura
 description: >-
-  Define los límites del sistema Tres Bigotes: React y Bootstrap 5 en el
+  Define los límites del sistema 3 Bigotes: React y Bootstrap 5 en el
   frontend, API PHP en el backend y MySQL relacional aparte. Úsala al empezar
   una tarea, al decidir en qué carpeta va un cambio, al documentar el avance,
   o cuando el usuario pida agendamiento, ficha clínica, comisiones, inventario,
   caja, multisede o roles.
 ---
 
-# Arquitectura Tres Bigotes
+# Arquitectura 3 Bigotes
 
-Sistema de gestión para la barbería Tres Bigotes. Tres capas, tres carpetas, tres skills. Ninguna capa escribe el trabajo de otra.
+Sistema de gestión para la barbería 3 Bigotes. Tres capas, tres carpetas, tres skills. Ninguna capa escribe el trabajo de otra.
 
 ## Capas
 

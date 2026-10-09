@@ -41,7 +41,7 @@ export default function PaginaIngreso() {
     <div className="d-flex align-items-center justify-content-center min-vh-100 px-3">
       <Card className="marca-tarjeta w-100" style={{ maxWidth: 420 }}>
         <Card.Body>
-          <h1 className="visually-hidden">Tres Bigotes</h1>
+          <h1 className="visually-hidden">3 Bigotes</h1>
           <img src={`${import.meta.env.BASE_URL}media/logo.jpeg`} alt="" className="marca-logo-grande" />
           {error && <Alert variant="danger">{error}</Alert>}
           <Form onSubmit={enviar}>

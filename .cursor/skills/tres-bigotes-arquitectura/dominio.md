@@ -1,4 +1,6 @@
-# Dominio Tres Bigotes
+# Dominio 3 Bigotes
+
+El nombre que se escribe siempre lleva el número: 3 Bigotes. Los correos, la carpeta y el código interno conservan el identificador técnico.
 
 ## Multisede
 

@@ -1,4 +1,4 @@
-# Tres Bigotes
+# 3 Bigotes
 
 Gestión de la barbería: agenda, reserva pública, ficha clínica, colaboradores, comisiones, inventario y caja.
 

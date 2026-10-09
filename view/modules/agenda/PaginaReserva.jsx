@@ -244,7 +244,7 @@ export default function PaginaReserva() {
     document.getElementById('reserva')?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const sede = catalogo?.sede || 'Tres Bigotes'
+  const sede = catalogo?.sede || '3 Bigotes'
   const resenas = catalogo?.resenas ?? []
   const profesional = disponibles.find((item) => String(item.id) === String(profesionalId))
   const horasLibres = profesional?.horarios ?? []

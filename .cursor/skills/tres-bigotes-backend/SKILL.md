@@ -1,13 +1,13 @@
 ---
 name: tres-bigotes-backend
 description: >-
-  Implementa la API PHP de Tres Bigotes: autenticación, permisos, citas,
+  Implementa la API PHP de 3 Bigotes: autenticación, permisos, citas,
   ficha clínica, comisiones, inventario y caja. Úsala al crear endpoints,
   validar reglas o acceder a MySQL con PDO. No crea pantallas ni archivos SQL
   de esquema.
 ---
 
-# Backend Tres Bigotes
+# Backend 3 Bigotes
 
 Solo `api/`, `config/`, `controllers/`, `models/` y `public/`. Expone JSON. Un archivo PHP no contiene HTML ni fragmentos de página. No renderiza React ni Bootstrap.
 

@@ -1,6 +1,6 @@
-# Contexto Tres Bigotes
+# Contexto 3 Bigotes
 
-Sistema web de gestión para la barbería Tres Bigotes, según la propuesta de Innovatyp del 1 de octubre de 2026. Cubre agenda, ficha clínica, colaboradores y comisiones, inventario, y apertura y cierre de caja. Cada sede ve solo sus datos.
+Sistema web de gestión para la barbería 3 Bigotes, según la propuesta de Innovatyp del 1 de octubre de 2026. Cubre agenda, ficha clínica, colaboradores y comisiones, inventario, y apertura y cierre de caja. Cada sede ve solo sus datos.
 
 ## Cómo se documenta
 

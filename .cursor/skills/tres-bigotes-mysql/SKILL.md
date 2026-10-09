@@ -1,13 +1,13 @@
 ---
 name: tres-bigotes-mysql
 description: >-
-  Diseña y migra la base MySQL relacional de Tres Bigotes, con InnoDB, claves
+  Diseña y migra la base MySQL relacional de 3 Bigotes, con InnoDB, claves
   foráneas y aislamiento por establecimiento. Úsala al crear tablas, relaciones,
   índices, migraciones o seeds. No escribe React, PHP de aplicación ni reglas
   calculadas en la interfaz.
 ---
 
-# MySQL Tres Bigotes
+# MySQL 3 Bigotes
 
 Solo `database/`. El modelo relacional está en [modelo.md](modelo.md).
 
