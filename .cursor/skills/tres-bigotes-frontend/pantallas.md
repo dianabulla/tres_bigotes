@@ -17,7 +17,7 @@ Menú según el rol que devuelve `GET /api/sesion`.
 | Productos, stock y movimientos | sí | vende y consulta alerta | no |
 | Apertura, venta y cierre de caja | opera el turno | opera el turno | no |
 
-El inicio es la portada original: video, marco, brasas, marquesina y el título 3 BIGOTES. Junto a Reservar cita y encima del formulario hay Instagram, Facebook y WhatsApp. Reservar cita pide nombre, teléfono y correo, luego el servicio, y solo entonces los profesionales con hora libre.
+El inicio es la portada original: video, marco, brasas, marquesina y el título 3 BIGOTES. Junto a Reservar cita y encima del formulario están Instagram y WhatsApp de la barbería. Facebook queda a la vista, marcado como Pronto. Reservar cita pide nombre, teléfono y correo, luego el servicio, y solo entonces los profesionales con hora libre.
 
 El menú muestra una pantalla cuando la sesión trae el permiso de esa pantalla. En Roles se crea un rol y se marcan esos permisos. En Usuarios se elige el rol de cada cuenta. Los tres roles de sistema siguen abriendo lo que abrían antes, hasta que alguien les cambie los permisos. Un permiso propio muestra solo el trabajo del profesional ligado a ese usuario.
 

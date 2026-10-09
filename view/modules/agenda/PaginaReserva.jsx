@@ -24,7 +24,7 @@ const MARQUESINA = [
 const REDES = [
   {
     nombre: 'Instagram',
-    href: 'https://www.instagram.com/3bigotesbarberia',
+    href: 'https://www.instagram.com/3bigotesbarberie',
     clase: 'red--instagram',
     icono: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -34,8 +34,9 @@ const REDES = [
   },
   {
     nombre: 'Facebook',
-    href: 'https://www.facebook.com/3bigotesbarberia',
-    clase: 'red--facebook',
+    href: '',
+    pendiente: true,
+    clase: 'red--facebook red--pendiente',
     icono: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path fill="currentColor" d="M14.2 21v-7.1h2.4l.4-2.8h-2.8V9.3c0-.8.2-1.4 1.4-1.4H17V5.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2h-2.4v2.8H11V21z" />
@@ -44,7 +45,7 @@ const REDES = [
   },
   {
     nombre: 'WhatsApp',
-    href: 'https://wa.me/573209651928?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%203%20Bigotes',
+    href: 'https://wa.me/573243149005?text=Hola%2C%20quiero%20agendar%20una%20cita%20en%203%20Bigotes',
     clase: 'red--whatsapp',
     icono: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -58,10 +59,18 @@ function Redes() {
   return (
     <div className="redes">
       {REDES.map((red) => (
-        <a key={red.nombre} className={`red ${red.clase}`} href={red.href} target="_blank" rel="noopener noreferrer">
-          {red.icono}
-          <span>{red.nombre}</span>
-        </a>
+        red.pendiente ? (
+          <span key={red.nombre} className={`red ${red.clase}`} aria-disabled="true">
+            {red.icono}
+            <span>{red.nombre}</span>
+            <span className="red__nota">Pronto</span>
+          </span>
+        ) : (
+          <a key={red.nombre} className={`red ${red.clase}`} href={red.href} target="_blank" rel="noopener noreferrer">
+            {red.icono}
+            <span>{red.nombre}</span>
+          </a>
+        )
       ))}
     </div>
   )

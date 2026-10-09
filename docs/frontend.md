@@ -19,7 +19,7 @@ Aplicación de gestión en `view/`. Bootstrap se carga en `view/App.jsx`. El men
 
 ## Estado — 8 de octubre de 2026
 
-Hecho: pantallas Sedes, Usuarios y Roles. El menú usa los permisos que devuelve la sesión. Sedes crea otra sucursal y el administrador que entra a ella. Usuarios asigna un rol a cada cuenta de esta sede. Roles crea un rol y marca sus permisos. El acceso del profesional también se puede crear en Colaboradores. En el inicio, junto a Reservar cita y encima del formulario, hay botones de Instagram (`instagram.com/3bigotesbarberia`), Facebook (`facebook.com/3bigotesbarberia`) y WhatsApp (`wa.me/573209651928`). Instagram y WhatsApp salen del Linktree de la barbería. Este corte está publicado en `3bigotesbarberie.com`.
+Hecho: pantallas Sedes, Usuarios y Roles. El menú usa los permisos que devuelve la sesión. Sedes crea otra sucursal y el administrador que entra a ella. Usuarios asigna un rol a cada cuenta de esta sede. Roles crea un rol y marca sus permisos. El acceso del profesional también se puede crear en Colaboradores. En el inicio, junto a Reservar cita y encima del formulario, hay Instagram (`instagram.com/3bigotesbarberie`) y WhatsApp (`324 314 9005`). Facebook se ve con la marca Pronto hasta que exista la página. Este corte está publicado en `3bigotesbarberie.com`.
 
 ## Estado — 6 de octubre de 2026
 
