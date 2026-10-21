@@ -31,19 +31,19 @@
 | `POST /api/caja/ventas` | administrador, recepción | Cobra productos y, si se envía `cita_id`, los servicios de una cita completada al precio aplicado. Una cita no se cobra dos veces. El stock del producto baja en la misma operación. Medios: `nequi`, `daviplata`, `qr` |
 | `POST /api/caja/cierre` | administrador, recepción | Reporta los tres medios. La diferencia la calcula el servidor y el turno queda cerrado |
 | `GET /api/servicios` | administrador, recepción | Catálogo de la sede. Recepción solo ve activos |
-| `POST /api/servicios` | administrador | Alta de servicio: nombre, categoría, duración, precio y, si viene, la receta de insumos |
-| `PUT /api/servicios/{id}` | administrador | Edita el servicio, su categoría, su baja y, si el cuerpo trae `insumos`, la receta. Cada línea es `producto_id` y `cantidad` de un insumo activo. Sin esa clave, la receta no cambia |
+| `POST /api/servicios` | administrador | Alta de servicio: nombre, categoría, descripción, duración, precio y, si viene, la receta de insumos. La descripción es opcional y llega hasta 500 caracteres |
+| `PUT /api/servicios/{id}` | administrador | Edita el servicio, su categoría, su descripción, su baja y, si el cuerpo trae `insumos`, la receta. Cada línea es `producto_id` y `cantidad` de un insumo activo. Sin esa clave, la receta no cambia |
 | `GET /api/clientes?q=` | administrador, recepción | Busca clientes de la sede por nombre o teléfono |
 | `GET /api/citas?desde=&hasta=` | administrador, recepción, colaborador | Citas del rango. El colaborador solo ve las suyas. `colaborador_id` filtra a los otros roles |
 | `POST /api/citas` | administrador, recepción | Reserva. El fin y el precio salen de MySQL. No permite solape del profesional |
 | `PUT /api/citas/{id}/estado` | administrador, recepción, colaborador | Cambia el estado permitido. El colaborador no cancela y solo toca la suya. Al completar, descuenta los insumos de los servicios en la misma operación. Si no hay stock, responde `422` y la cita sigue en proceso |
-| `GET /api/reserva` | público | Servicios activos, con su categoría, profesionales con foto, reseñas y nombre de la sede |
+| `GET /api/reserva` | público | Servicios activos, con su categoría y descripción, profesionales con foto, reseñas y nombre de la sede |
 | `POST /api/colaboradores/{id}/foto` | administrador | Foto JPG, PNG o WebP del profesional, hasta 2 MB |
 | `GET /api/resenas` | administrador | Reseñas de la carta |
 | `POST /api/resenas` | administrador | Publica una reseña: autor, texto y calificación de 1 a 5 |
 | `DELETE /api/resenas/{id}` | administrador | Quita esa reseña de la sede |
 | `GET /api/reserva/cliente?telefono=` | público | Si el teléfono ya existe, devuelve nombre y correo. Si no, `cliente` nulo |
-| `GET /api/reserva/horarios` | público | Horarios libres de 08:00 a 20:00 según profesional, día y servicios. Sin servicios, muestra huecos de 30 minutos |
+| `GET /api/reserva/horarios` | público | Horarios libres de 08:00 a 20:00 según día y servicios. Con `colaborador_id` responde `{ horarios }`. Sin él, responde `{ profesionales }` solo con quienes tienen hueco. Sin servicios, huecos de 30 minutos |
 | `POST /api/reserva` | público | Crea la cita sin sesión. Reutiliza la ficha del teléfono y guarda nombre y correo |
 | `GET /api/clinica/clientes?q=` | administrador, recepción, colaborador | Busca clientes. El colaborador solo ve los de sus citas |
 | `GET /api/clinica/clientes/{id}` | administrador, recepción, colaborador | Ficha, notas y, si es el profesional, visitas sin nota |
@@ -62,6 +62,26 @@ La baja no borra la fila: `activo` pasa a falso y, si tiene usuario, ese usuario
 Errores: `401` sesión inválida, `403` sin permiso de rol, `422` cuerpo inválido, `500` fallo interno sin detalle de SQL.
 
 Todas las carpetas de módulo ya tienen rutas.
+
+## Estado — 21 de octubre de 2026 (servicios)
+
+Hecho: alta y edición de servicio aceptan `descripcion`. Vacía se guarda nula. Más de 500 caracteres responde `422`. El catálogo y la reserva pública la devuelven. Publicado en `3bigotesbarberie.com`. La columna llega con `009_descripcion_servicio.sql`.
+
+Archivos: `models/Servicio.php`, `controllers/CitasController.php`.
+
+## Estado — 21 de octubre de 2026 (tarde)
+
+Hecho: CORS acepta el origen del propio host y una lista en `APP_ORIGEN` (dominio y www). En el servidor se corrigió `config/.env`: antes tenía `APP_ORIGEN=http://localhost:5173`, ahora el dominio de producción. Eso bloqueaba el preflight en algunos navegadores.
+
+Archivos: `public/index.php`, `config/.env` del hosting.
+
+## Estado — 21 de octubre de 2026
+
+Hecho: `GET /api/reserva/horarios` sin `colaborador_id` devuelve de una vez los profesionales con huecos libres para ese día y esos servicios. Con `colaborador_id` sigue respondiendo solo `{ horarios }`. Publicado en `3bigotesbarberie.com`.
+
+Archivos: `controllers/CitasController.php`.
+
+Falta: nada de este corte.
 
 ## Estado — 8 de octubre de 2026
 

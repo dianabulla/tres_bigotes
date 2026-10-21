@@ -11,9 +11,11 @@ export function buscarReserva(telefono) {
 export function horariosReserva(fecha, colaboradorId, servicios) {
   const params = new URLSearchParams({
     fecha,
-    colaborador_id: String(colaboradorId),
     servicios: servicios.join(','),
   })
+  if (colaboradorId != null && colaboradorId !== '') {
+    params.set('colaborador_id', String(colaboradorId))
+  }
   return solicitar(`/api/reserva/horarios?${params.toString()}`, { publica: true })
 }
 

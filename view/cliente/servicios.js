@@ -8,6 +8,7 @@ export function guardarServicio(datos) {
   const cuerpo = {
     nombre: datos.nombre,
     categoria: datos.categoria,
+    descripcion: datos.descripcion ?? '',
     duracion_minutos: datos.duracion_minutos,
     precio: datos.precio,
     insumos: (datos.insumos ?? []).map((linea) => ({

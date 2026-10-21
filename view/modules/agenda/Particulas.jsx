@@ -11,7 +11,11 @@ export default function Particulas() {
     if (!ctx) {
       return undefined
     }
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      || window.matchMedia('(pointer: coarse)').matches
+      || window.innerWidth < 720
+    ) {
       return undefined
     }
 

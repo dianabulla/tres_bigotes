@@ -322,25 +322,55 @@ final class CitasController
         $sede = self::sedePublica();
         $fecha = self::dia($_GET['fecha'] ?? null);
         $colaboradorId = $_GET['colaborador_id'] ?? '';
-        if (!is_string($colaboradorId) || !ctype_digit($colaboradorId)) {
-            Respuesta::json(404, ['error' => 'Profesional no encontrado']);
-        }
         $lista = self::listaServicios($_GET['servicios'] ?? '');
         $servicios = $lista === [] ? [] : self::idsServicio($lista);
-        $profesionalValido = false;
-        foreach (Cita::profesionales($sede['id']) as $profesional) {
-            if ($profesional['id'] === (int) $colaboradorId) {
-                $profesionalValido = true;
-            }
-        }
-        if (!$profesionalValido) {
-            Respuesta::json(404, ['error' => 'Profesional no encontrado']);
-        }
+        $profesionales = Cita::profesionales($sede['id']);
         $minutos = $servicios === [] ? 30 : self::minutosActivos($sede['id'], $servicios);
-        if (!self::diaReservable($fecha)) {
-            Respuesta::json(200, ['horarios' => []]);
+
+        if ($colaboradorId !== '' && $colaboradorId !== null) {
+            if (!is_string($colaboradorId) || !ctype_digit($colaboradorId)) {
+                Respuesta::json(404, ['error' => 'Profesional no encontrado']);
+            }
+            $profesionalValido = false;
+            foreach ($profesionales as $profesional) {
+                if ($profesional['id'] === (int) $colaboradorId) {
+                    $profesionalValido = true;
+                    break;
+                }
+            }
+            if (!$profesionalValido) {
+                Respuesta::json(404, ['error' => 'Profesional no encontrado']);
+            }
+            if (!self::diaReservable($fecha)) {
+                Respuesta::json(200, ['horarios' => []]);
+            }
+            Respuesta::json(200, [
+                'horarios' => self::huecosLibres($sede['id'], (int) $colaboradorId, $fecha, $minutos),
+            ]);
         }
-        $ocupados = Cita::ocupados($sede['id'], (int) $colaboradorId, $fecha . ' 00:00:00', $fecha . ' 23:59:59');
+
+        if (!self::diaReservable($fecha)) {
+            Respuesta::json(200, ['profesionales' => []]);
+        }
+        $disponibles = [];
+        foreach ($profesionales as $profesional) {
+            $horarios = self::huecosLibres($sede['id'], (int) $profesional['id'], $fecha, $minutos);
+            if ($horarios === []) {
+                continue;
+            }
+            $disponibles[] = [
+                'id' => $profesional['id'],
+                'nombre' => $profesional['nombre'],
+                'foto' => $profesional['foto'] ?? null,
+                'horarios' => $horarios,
+            ];
+        }
+        Respuesta::json(200, ['profesionales' => $disponibles]);
+    }
+
+    private static function huecosLibres(int $sede, int $colaboradorId, string $fecha, int $minutos): array
+    {
+        $ocupados = Cita::ocupados($sede, $colaboradorId, $fecha . ' 00:00:00', $fecha . ' 23:59:59');
         $horarios = [];
         $apertura = strtotime($fecha . ' 08:00:00');
         $cierre = strtotime($fecha . ' 20:00:00');
@@ -362,7 +392,7 @@ final class CitasController
                 $horarios[] = date('H:i', $inicio);
             }
         }
-        Respuesta::json(200, ['horarios' => $horarios]);
+        return $horarios;
     }
 
     public static function reservarPublico(Peticion $peticion): void
@@ -607,6 +637,10 @@ final class CitasController
         if ($categoria === '' || mb_strlen($categoria) > 60) {
             Respuesta::json(422, ['error' => 'Indica la categoría del servicio']);
         }
+        $descripcion = trim((string) ($cuerpo['descripcion'] ?? ''));
+        if (mb_strlen($descripcion) > 500) {
+            Respuesta::json(422, ['error' => 'La descripción del servicio no puede pasar de 500 caracteres']);
+        }
         $activo = true;
         if (!$esAlta) {
             $activo = self::booleano($cuerpo['activo'] ?? null);
@@ -617,6 +651,7 @@ final class CitasController
         return [
             'nombre' => $nombre,
             'categoria' => $categoria,
+            'descripcion' => $descripcion === '' ? null : $descripcion,
             'duracion_minutos' => (int) $duracion,
             'precio' => $precio,
             'activo' => $activo,

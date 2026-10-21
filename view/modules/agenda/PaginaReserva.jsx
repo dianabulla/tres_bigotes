@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Col, Form, Row, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import { buscarReserva, crearReserva, horariosReserva, verReserva } from '../../cliente/reserva'
-import BrilloCursor from './BrilloCursor'
-import Particulas from './Particulas'
+import VideoFondo from './VideoFondo'
 import './portada.css'
+
+const BrilloCursor = lazy(() => import('./BrilloCursor'))
+const Particulas = lazy(() => import('./Particulas'))
 
 const CIFRAS = [
   ['5.0', 'Valoración ★'],
@@ -123,6 +125,7 @@ export default function PaginaReserva() {
   const [menu, setMenu] = useState(false)
   const [bajado, setBajado] = useState(false)
   const [reservaLista, setReservaLista] = useState(false)
+  const [efectos, setEfectos] = useState(false)
 
   useEffect(() => {
     const alBajar = () => setBajado(window.scrollY > 24)
@@ -139,6 +142,28 @@ export default function PaginaReserva() {
   }, [menu])
 
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined
+    }
+    let idleId = 0
+    let timeoutId = 0
+    const activar = () => setEfectos(true)
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(activar, { timeout: 1800 })
+    } else {
+      timeoutId = window.setTimeout(activar, 400)
+    }
+    return () => {
+      if (idleId && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId)
+      }
+      if (timeoutId) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     verReserva()
       .then((datos) => {
         setCatalogo(datos)
@@ -147,7 +172,7 @@ export default function PaginaReserva() {
   }, [])
 
   useEffect(() => {
-    if (!reservaLista || servicios.length === 0 || fecha === '' || catalogo === null) {
+    if (!reservaLista || servicios.length === 0 || fecha === '') {
       setDisponibles([])
       setProfesionalId('')
       setHorario('')
@@ -155,15 +180,12 @@ export default function PaginaReserva() {
     }
     let vigente = true
     setCargandoHorarios(true)
-    Promise.all(catalogo.profesionales.map(async (item) => {
-      const datos = await horariosReserva(fecha, item.id, servicios)
-      return datos.horarios.length > 0 ? { ...item, horarios: datos.horarios } : null
-    }))
-      .then((lista) => {
+    horariosReserva(fecha, null, servicios)
+      .then((datos) => {
         if (!vigente) {
           return
         }
-        const libres = lista.filter(Boolean)
+        const libres = datos.profesionales ?? []
         setDisponibles(libres)
         setProfesionalId((actual) => (libres.some((item) => String(item.id) === String(actual)) ? actual : ''))
         setHorario('')
@@ -182,7 +204,7 @@ export default function PaginaReserva() {
     return () => {
       vigente = false
     }
-  }, [reservaLista, servicios, fecha, catalogo])
+  }, [reservaLista, servicios, fecha])
 
   const grupos = useMemo(() => {
     const mapa = new Map()
@@ -253,7 +275,11 @@ export default function PaginaReserva() {
 
   return (
     <div className="inicio">
-      <BrilloCursor />
+      {efectos && (
+        <Suspense fallback={null}>
+          <BrilloCursor />
+        </Suspense>
+      )}
       <header className={bajado ? 'nav is-scrolled' : 'nav'}>
         <div className="nav__inner">
           <a className="nav__brand" href="#inicio" onClick={() => setMenu(false)}>
@@ -298,7 +324,7 @@ export default function PaginaReserva() {
       <section className="hero" id="inicio">
         <div className="bg" aria-hidden="true">
           <div className="bg__video-wrap">
-            <video className="bg__video" src={`${medio}media/fondo.mp4`} autoPlay muted loop playsInline preload="auto" />
+            <VideoFondo src={`${medio}media/fondo-opt.mp4`} poster={`${medio}media/fondo-poster.jpg`} />
           </div>
           <div className="bg__tint" />
           <div className="bg__veil" />
@@ -307,7 +333,11 @@ export default function PaginaReserva() {
           <div className="bg__scanbar" />
           <div className="bg__grain" />
         </div>
-        <Particulas />
+        {efectos && (
+          <Suspense fallback={null}>
+            <Particulas />
+          </Suspense>
+        )}
         <div className="hero__frame" aria-hidden="true" />
         <p className="hero__side hero__side--left" aria-hidden="true">Est. 2020 — Barberíe</p>
         <p className="hero__side hero__side--right" aria-hidden="true">Navaja · Acero · Legado</p>
@@ -398,6 +428,7 @@ export default function PaginaReserva() {
                         onClick={() => cambiarServicio(servicio.id, !activo)}
                       >
                         <span className="carta-servicio-nombre">{servicio.nombre}</span>
+                        {servicio.descripcion ? <span className="carta-servicio-descripcion">{servicio.descripcion}</span> : null}
                         <span className="carta-servicio-meta">{servicio.duracion_minutos} min</span>
                         <span className="carta-servicio-precio">{pesos(servicio.precio)}</span>
                         <span className="carta-elegir">{activo ? 'Elegido' : 'Elegir'}</span>
@@ -482,6 +513,7 @@ export default function PaginaReserva() {
                         onClick={() => cambiarServicio(servicio.id, !activo)}
                       >
                         <span className="carta-servicio-nombre">{servicio.nombre}</span>
+                        {servicio.descripcion ? <span className="carta-servicio-descripcion">{servicio.descripcion}</span> : null}
                         <span className="carta-servicio-meta">{servicio.duracion_minutos} min</span>
                         <span className="carta-servicio-precio">{pesos(servicio.precio)}</span>
                         <span className="carta-elegir">{activo ? 'Elegido' : 'Elegir'}</span>

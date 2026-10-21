@@ -7,6 +7,7 @@ const vacio = {
   id: null,
   nombre: '',
   categoria: '',
+  descripcion: '',
   duracion_minutos: '30',
   precio: '',
   activo: true,
@@ -134,6 +135,7 @@ export default function PaginaServicios() {
           <thead>
             <tr>
               <th>Nombre</th>
+              <th>Descripción</th>
               <th>Categoría</th>
               <th>Minutos</th>
               <th>Precio</th>
@@ -146,6 +148,7 @@ export default function PaginaServicios() {
             {lista.map((servicio) => (
               <tr key={servicio.id}>
                 <td>{servicio.nombre}</td>
+                <td>{servicio.descripcion || '—'}</td>
                 <td>{servicio.categoria}</td>
                 <td>{servicio.duracion_minutos}</td>
                 <td>{servicio.precio}</td>
@@ -193,6 +196,16 @@ export default function PaginaServicios() {
                 maxLength={120}
                 value={formulario?.nombre ?? ''}
                 onChange={(evento) => cambiar('nombre', evento.target.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="descripcionServicio">
+              <Form.Label>Descripción del servicio</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                maxLength={500}
+                value={formulario?.descripcion ?? ''}
+                onChange={(evento) => cambiar('descripcion', evento.target.value)}
               />
             </Form.Group>
             <Form.Group className="mb-3" controlId="categoriaServicio">

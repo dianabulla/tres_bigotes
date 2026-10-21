@@ -11,7 +11,7 @@ final class Servicio
 {
     public static function listar(int $sede, bool $soloActivos): array
     {
-        $sql = 'SELECT id, nombre, categoria, duracion_minutos, precio, activo
+        $sql = 'SELECT id, nombre, categoria, descripcion, duracion_minutos, precio, activo
                 FROM servicio
                 WHERE establecimiento_id = :sede';
         if ($soloActivos) {
@@ -30,7 +30,7 @@ final class Servicio
     public static function bloquear(PDO $pdo, int $sede, int $id): ?array
     {
         $consulta = $pdo->prepare(
-            'SELECT id, nombre, categoria, duracion_minutos, precio, activo
+            'SELECT id, nombre, categoria, descripcion, duracion_minutos, precio, activo
              FROM servicio
              WHERE id = :id AND establecimiento_id = :sede
              LIMIT 1
@@ -44,13 +44,14 @@ final class Servicio
     public static function crear(PDO $pdo, int $sede, array $datos): int
     {
         $insertar = $pdo->prepare(
-            'INSERT INTO servicio (establecimiento_id, nombre, categoria, duracion_minutos, precio, activo)
-             VALUES (:sede, :nombre, :categoria, :duracion, :precio, 1)'
+            'INSERT INTO servicio (establecimiento_id, nombre, categoria, descripcion, duracion_minutos, precio, activo)
+             VALUES (:sede, :nombre, :categoria, :descripcion, :duracion, :precio, 1)'
         );
         $insertar->execute([
             'sede' => $sede,
             'nombre' => $datos['nombre'],
             'categoria' => $datos['categoria'],
+            'descripcion' => $datos['descripcion'],
             'duracion' => $datos['duracion_minutos'],
             'precio' => $datos['precio'],
         ]);
@@ -61,12 +62,13 @@ final class Servicio
     {
         $guardar = $pdo->prepare(
             'UPDATE servicio
-             SET nombre = :nombre, categoria = :categoria, duracion_minutos = :duracion, precio = :precio, activo = :activo
+             SET nombre = :nombre, categoria = :categoria, descripcion = :descripcion, duracion_minutos = :duracion, precio = :precio, activo = :activo
              WHERE id = :id AND establecimiento_id = :sede'
         );
         $guardar->execute([
             'nombre' => $datos['nombre'],
             'categoria' => $datos['categoria'],
+            'descripcion' => $datos['descripcion'],
             'duracion' => $datos['duracion_minutos'],
             'precio' => $datos['precio'],
             'activo' => $datos['activo'] ? 1 : 0,
@@ -157,6 +159,7 @@ final class Servicio
             'id' => (int) $fila['id'],
             'nombre' => $fila['nombre'],
             'categoria' => $fila['categoria'],
+            'descripcion' => $fila['descripcion'] ?? '',
             'duracion_minutos' => (int) $fila['duracion_minutos'],
             'precio' => $fila['precio'],
             'activo' => (int) $fila['activo'] === 1,

@@ -34,9 +34,14 @@ spl_autoload_register(static function (string $clase): void {
 });
 
 $origenPedido = $_SERVER['HTTP_ORIGIN'] ?? '';
-$permitido = Config::obtener('APP_ORIGEN', 'http://localhost:5173');
-if ($origenPedido !== '' && $origenPedido === $permitido) {
-    header('Access-Control-Allow-Origin: ' . $permitido);
+$permitidos = array_values(array_filter(array_map(
+    static fn (string $valor): string => trim($valor),
+    explode(',', (string) Config::obtener('APP_ORIGEN', 'http://localhost:5173'))
+)));
+$https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+$hostActual = ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '');
+if ($origenPedido !== '' && (in_array($origenPedido, $permitidos, true) || $origenPedido === $hostActual)) {
+    header('Access-Control-Allow-Origin: ' . $origenPedido);
     header('Vary: Origin');
     header('Access-Control-Allow-Headers: Authorization, Content-Type');
     header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');

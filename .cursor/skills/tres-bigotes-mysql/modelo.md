@@ -30,7 +30,7 @@ Orden de creación: catálogos de sede, personas, agenda, dinero, inventario.
 
 ## Agenda
 
-`servicio`: `id`, `establecimiento_id`, `nombre`, `categoria`, `duracion_minutos`, `precio`, `activo`.
+`servicio`: `id`, `establecimiento_id`, `nombre`, `categoria`, `descripcion` nula, `duracion_minutos`, `precio`, `activo`.
 
 `servicio_insumo`: `id`, `servicio_id`, `producto_id`, `cantidad` positiva. Único (`servicio_id`, `producto_id`). Cuelga de `servicio`. El producto es un insumo de la misma sede.
 

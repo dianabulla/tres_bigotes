@@ -25,11 +25,16 @@ export async function solicitar(ruta, { metodo = 'GET', cuerpo, publica = false 
   }
 
   const base = import.meta.env.VITE_API_URL ?? ''
-  const respuesta = await fetch(`${base}${ruta}`, {
-    method: metodo,
-    headers,
-    body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
-  })
+  let respuesta
+  try {
+    respuesta = await fetch(`${base}${ruta}`, {
+      method: metodo,
+      headers,
+      body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
+    })
+  } catch {
+    throw new Error('No hay conexión con el servidor. Revisa la red o prueba en otro navegador.')
+  }
 
   if (respuesta.status === 204) {
     return null

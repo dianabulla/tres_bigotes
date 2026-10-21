@@ -32,6 +32,14 @@ Orden cuando un cambio cruza capas: migración, luego API, luego pantalla.
 
 La sesión dura 12 horas. Zona horaria de la API: `America/Bogota`.
 
+## Estado — 21 de octubre de 2026 (tarde)
+
+Hecho: en el hosting `APP_ORIGEN` apuntaba a Vite local y rompía CORS en parte de los navegadores. Quedó el dominio de producción. La API acepta el origen del propio host. Se documentó que el DNS del dominio a veces falla por IPv6 en algunos equipos: si no carga o no entra, probar red/DNS o otro navegador.
+
+## Estado — 21 de octubre de 2026
+
+Hecho: la portada pública carga más rápido sin cambiar el video del cliente. La interfaz usa `fondo-opt.mp4` (mismo clip comprimido), poster y carga diferida; el original queda en `view/public/media/fondo.mp4`. Las pantallas de gestión van en chunks con `React.lazy`. `GET /api/reserva/horarios` sin profesional responde de una vez a todos los disponibles. Publicado en `3bigotesbarberie.com` con `npm run build:sitio` (carpeta `dist-web/` como `dist/`) y el controlador de citas actualizado.
+
 ## Estado — 8 de octubre de 2026
 
 Hecho: pantallas Sedes, Usuarios y Roles. La migración `007_roles_permisos.sql` agrega el nombre del rol y las tablas `permiso` y `rol_permiso`. Cada acción exige un permiso de esa lista. El corte está publicado en `3bigotesbarberie.com` con `deploy/htaccess-raiz`, `deploy/htaccess-public` y la interfaz de `npm run build:sitio`.

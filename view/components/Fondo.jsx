@@ -1,9 +1,10 @@
+import VideoFondo from '../modules/agenda/VideoFondo'
+
 export default function Fondo() {
+  const medio = import.meta.env.BASE_URL
   return (
     <div className="fondo" aria-hidden="true">
-      <video className="fondo-video" autoPlay muted loop playsInline>
-        <source src={`${import.meta.env.BASE_URL}media/fondo.mp4`} type="video/mp4" />
-      </video>
+      <VideoFondo src={`${medio}media/fondo-opt.mp4`} poster={`${medio}media/fondo-poster.jpg`} />
       <div className="fondo-velo" />
     </div>
   )
