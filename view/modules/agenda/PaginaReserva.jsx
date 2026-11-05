@@ -1,7 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Col, Form, Row, Spinner } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
-import { buscarReserva, crearReserva, horariosReserva, verReserva } from '../../cliente/reserva'
+import { buscarReserva, crearReserva, enviarResenaPublica, horariosReserva, verReserva } from '../../cliente/reserva'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
+import ConsultaCita from './ConsultaCita'
 import VideoFondo from './VideoFondo'
 import './portada.css'
 
@@ -83,6 +85,7 @@ const ENLACES = [
   ['Barbería', '#barberia'],
   ['Servicios', '#servicios'],
   ['Galería', '#galeria'],
+  ['Reseñas', '#resenas'],
   ['Contacto', '#contacto'],
 ]
 
@@ -94,6 +97,21 @@ function diaIso(fecha) {
 
 function pesos(valor) {
   return Number(valor).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+}
+
+function formatearCita(inicio) {
+  const fecha = new Date(String(inicio).replace(' ', 'T'))
+  if (Number.isNaN(fecha.getTime())) {
+    return String(inicio).slice(0, 16)
+  }
+  return fecha.toLocaleString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function fotoSrc(foto) {
@@ -108,6 +126,45 @@ function estrellas(nota) {
   return '★★★★★'.slice(0, nota)
 }
 
+function ChecklistServicios({ grupos, seleccionados, onAlternar, idPrefijo = 'servicio' }) {
+  if (grupos.length === 0) {
+    return <p className="text-secondary mb-0">Todavía no hay servicios para reservar.</p>
+  }
+  return grupos.map(([categoria, lista]) => (
+    <div key={categoria} className="carta-checklist-grupo">
+      <h3 className="inicio-categoria">{categoria}</h3>
+      <ul className="carta-checklist-servicios">
+        {lista.map((servicio) => {
+          const activo = seleccionados.includes(servicio.id)
+          const id = `${idPrefijo}-${servicio.id}`
+          return (
+            <li key={servicio.id} className={activo ? 'carta-checklist-item activo' : 'carta-checklist-item'}>
+              <Form.Check
+                type="checkbox"
+                id={id}
+                checked={activo}
+                onChange={() => onAlternar(servicio.id)}
+                label={(
+                  <span className="carta-checklist-cuerpo">
+                    <span className="carta-checklist-fila">
+                      <span className="carta-checklist-nombre">{servicio.nombre}</span>
+                      <span className="carta-checklist-precio">{pesos(servicio.precio)}</span>
+                    </span>
+                    <span className="carta-checklist-meta">{servicio.duracion_minutos} min</span>
+                    {servicio.descripcion ? (
+                      <span className="carta-checklist-descripcion">{servicio.descripcion}</span>
+                    ) : null}
+                  </span>
+                )}
+              />
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  ))
+}
+
 export default function PaginaReserva() {
   const [catalogo, setCatalogo] = useState(null)
   const [error, setError] = useState('')
@@ -116,16 +173,33 @@ export default function PaginaReserva() {
   const [correo, setCorreo] = useState('')
   const [servicios, setServicios] = useState([])
   const [profesionalId, setProfesionalId] = useState('')
-  const [fecha, setFecha] = useState(diaIso(new Date()))
+  const [fecha, setFecha] = useState('')
   const [horario, setHorario] = useState('')
-  const [disponibles, setDisponibles] = useState([])
+  const [horasLibres, setHorasLibres] = useState([])
   const [cargandoHorarios, setCargandoHorarios] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [reserva, setReserva] = useState(null)
   const [menu, setMenu] = useState(false)
   const [bajado, setBajado] = useState(false)
   const [reservaLista, setReservaLista] = useState(false)
+  const [modo, setModo] = useState('reservar')
+  const [paso, setPaso] = useState('servicio')
   const [efectos, setEfectos] = useState(false)
+  const [autorResena, setAutorResena] = useState('')
+  const [correoResena, setCorreoResena] = useState('')
+  const [textoResena, setTextoResena] = useState('')
+  const [notaResena, setNotaResena] = useState('5')
+  const [enviandoResena, setEnviandoResena] = useState(false)
+  const [avisoResena, setAvisoResena] = useState('')
+  const [errorResena, setErrorResena] = useState('')
+  const panelReserva = useRef(null)
+  const hoy = diaIso(new Date())
+
+  function irAReserva() {
+    requestAnimationFrame(() => {
+      panelReserva.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   useEffect(() => {
     const alBajar = () => setBajado(window.scrollY > 24)
@@ -172,27 +246,25 @@ export default function PaginaReserva() {
   }, [])
 
   useEffect(() => {
-    if (!reservaLista || servicios.length === 0 || fecha === '') {
-      setDisponibles([])
-      setProfesionalId('')
+    if (!reservaLista || servicios.length === 0 || profesionalId === '' || fecha === '') {
+      setHorasLibres([])
       setHorario('')
+      setCargandoHorarios(false)
       return undefined
     }
     let vigente = true
     setCargandoHorarios(true)
-    horariosReserva(fecha, null, servicios)
+    setHorario('')
+    horariosReserva(fecha, profesionalId, servicios)
       .then((datos) => {
         if (!vigente) {
           return
         }
-        const libres = datos.profesionales ?? []
-        setDisponibles(libres)
-        setProfesionalId((actual) => (libres.some((item) => String(item.id) === String(actual)) ? actual : ''))
-        setHorario('')
+        setHorasLibres(datos.horarios ?? [])
       })
       .catch((fallo) => {
         if (vigente) {
-          setDisponibles([])
+          setHorasLibres([])
           setError(fallo.message)
         }
       })
@@ -204,7 +276,7 @@ export default function PaginaReserva() {
     return () => {
       vigente = false
     }
-  }, [reservaLista, servicios, fecha])
+  }, [reservaLista, servicios, profesionalId, fecha])
 
   const grupos = useMemo(() => {
     const mapa = new Map()
@@ -234,8 +306,72 @@ export default function PaginaReserva() {
     }
   }
 
-  function cambiarServicio(id, marcado) {
-    setServicios((actual) => (marcado ? [...actual, id] : actual.filter((item) => item !== id)))
+  function reiniciarAgenda() {
+    setProfesionalId('')
+    setFecha('')
+    setHorario('')
+    setHorasLibres([])
+  }
+
+  function abrirReserva(evento) {
+    evento?.preventDefault?.()
+    setMenu(false)
+    setReserva(null)
+    setModo('reservar')
+    setReservaLista(true)
+    setPaso('servicio')
+    irAReserva()
+  }
+
+  function abrirConsulta(evento) {
+    evento?.preventDefault?.()
+    setMenu(false)
+    setError('')
+    setModo('consultar')
+    setReservaLista(true)
+    irAReserva()
+  }
+
+  function alternarServicio(id) {
+    setError('')
+    setReserva(null)
+    setReservaLista(true)
+    setModo('reservar')
+    setServicios((actual) => {
+      if (actual.includes(id)) {
+        return actual.filter((item) => item !== id)
+      }
+      return [...actual, id]
+    })
+    reiniciarAgenda()
+    setPaso('servicio')
+    // No hacemos scroll: en móvil el salto a #reserva duplicaba el checklist.
+  }
+
+  function continuarServicios() {
+    if (servicios.length === 0) {
+      setError('Elige al menos un servicio')
+      return
+    }
+    setError('')
+    setPaso('barbero')
+    irAReserva()
+  }
+
+  function elegirProfesional(id) {
+    setError('')
+    setProfesionalId(String(id))
+    setFecha('')
+    setHorario('')
+    setHorasLibres([])
+    setPaso('agenda')
+    irAReserva()
+  }
+
+  function elegirHorario(hora) {
+    setHorario(hora)
+    setPaso('datos')
+    irAReserva()
   }
 
   async function confirmar(evento) {
@@ -246,12 +382,13 @@ export default function PaginaReserva() {
       const datos = await crearReserva({
         nombre,
         telefono: telefono.trim(),
-        correo,
+        correo: correo.trim(),
         colaborador_id: Number(profesionalId),
         inicio: `${fecha} ${horario}:00`,
         servicios,
       })
       setReserva(datos.reserva)
+      irAReserva()
     } catch (fallo) {
       setError(fallo.message)
     } finally {
@@ -259,17 +396,47 @@ export default function PaginaReserva() {
     }
   }
 
-  function abrirReserva(evento) {
+  function nuevaReserva() {
+    setReserva(null)
+    setServicios([])
+    reiniciarAgenda()
+    setError('')
+    setPaso('servicio')
+    irAReserva()
+  }
+
+  async function enviarResena(evento) {
     evento.preventDefault()
-    setMenu(false)
-    setReservaLista(true)
-    document.getElementById('reserva')?.scrollIntoView({ behavior: 'smooth' })
+    setErrorResena('')
+    setAvisoResena('')
+    setEnviandoResena(true)
+    try {
+      const datos = await enviarResenaPublica({
+        autor: autorResena.trim(),
+        correo: correoResena.trim(),
+        texto: textoResena.trim(),
+        calificacion: Number(notaResena),
+      })
+      setAutorResena('')
+      setCorreoResena('')
+      setTextoResena('')
+      setNotaResena('5')
+      setAvisoResena(datos.mensaje || 'Gracias por tu reseña.')
+    } catch (fallo) {
+      setErrorResena(fallo.message)
+    } finally {
+      setEnviandoResena(false)
+    }
   }
 
   const sede = catalogo?.sede || '3 Bigotes'
   const resenas = catalogo?.resenas ?? []
-  const profesional = disponibles.find((item) => String(item.id) === String(profesionalId))
-  const horasLibres = profesional?.horarios ?? []
+  const barberos = catalogo?.profesionales ?? []
+  const profesional = barberos.find((item) => String(item.id) === String(profesionalId))
+  const elegidos = (catalogo?.servicios ?? []).filter((item) => servicios.includes(item.id))
+  const nombresServicio = elegidos.map((item) => item.nombre)
+  const minutosElegidos = elegidos.reduce((suma, item) => suma + item.duracion_minutos, 0)
+  const totalElegidos = elegidos.reduce((suma, item) => suma + Number(item.precio), 0)
 
   const medio = import.meta.env.BASE_URL
 
@@ -297,6 +464,7 @@ export default function PaginaReserva() {
             ))}
           </nav>
           <div className="nav__actions">
+            <a className="btn btn--ghost nav__cta-secundaria" href="#reserva" onClick={abrirConsulta}>Consultar cita</a>
             <a className="btn btn--primary nav__cta" href="#reserva" onClick={abrirReserva}>Reservar cita</a>
             <button
               type="button"
@@ -319,6 +487,7 @@ export default function PaginaReserva() {
             <a key={href} href={href} style={{ '--i': indice }} onClick={() => setMenu(false)}>{etiqueta}</a>
           ))}
         </nav>
+        <a className="btn btn--ghost menu__cta-secundaria" href="#reserva" onClick={abrirConsulta}>Consultar cita</a>
         <a className="btn btn--primary menu__cta" href="#reserva" onClick={abrirReserva}>Reservar cita</a>
       </div>
       <section className="hero" id="inicio">
@@ -350,14 +519,14 @@ export default function PaginaReserva() {
           <h1 className="hero__title" data-text="3 BIGOTES">3 BIGOTES</h1>
           <p className="hero__serif">Barberíe — Since 2020</p>
           <p className="hero__desc">
-            Cortes de precisión quirúrgica, afeitado clásico a navaja y ritual de toalla caliente. Aquí no vienes a cortarte el pelo: <strong>vienes a forjar tu presencia</strong>.
+            Más que una barbería... Un club de amigos.
           </p>
           <div className="hero__actions">
             <a className="btn btn--primary" href="#reserva" onClick={abrirReserva}>
               Reservar cita
               <span className="btn__icon" aria-hidden="true">→</span>
             </a>
-            <a className="btn btn--ghost" href="#servicios">Ver servicios</a>
+            <a className="btn btn--ghost" href="#reserva" onClick={abrirConsulta}>Consultar cita</a>
           </div>
           <Redes />
           <dl className="hero__stats">
@@ -412,32 +581,21 @@ export default function PaginaReserva() {
 
           <section id="servicios" className="carta-seccion">
             <h2 className="carta-titulo">Servicios</h2>
-            {grupos.length === 0 ? (
-              <p className="text-secondary text-center mb-0">Todavía no hay servicios para reservar.</p>
-            ) : grupos.map(([categoria, lista]) => (
-              <div key={categoria} className="mb-4">
-                <h3 className="inicio-categoria">{categoria}</h3>
-                <div className="carta-servicios">
-                  {lista.map((servicio) => {
-                    const activo = servicios.includes(servicio.id)
-                    return (
-                      <button
-                        key={servicio.id}
-                        type="button"
-                        className={activo ? 'carta-servicio activo' : 'carta-servicio'}
-                        onClick={() => cambiarServicio(servicio.id, !activo)}
-                      >
-                        <span className="carta-servicio-nombre">{servicio.nombre}</span>
-                        {servicio.descripcion ? <span className="carta-servicio-descripcion">{servicio.descripcion}</span> : null}
-                        <span className="carta-servicio-meta">{servicio.duracion_minutos} min</span>
-                        <span className="carta-servicio-precio">{pesos(servicio.precio)}</span>
-                        <span className="carta-elegir">{activo ? 'Elegido' : 'Elegir'}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+            <p className="text-secondary text-center mb-3">Marca uno o varios y continúa con el barbero y el horario.</p>
+            <ChecklistServicios
+              idPrefijo="carta-servicio"
+              grupos={grupos}
+              seleccionados={reservaLista && !reserva ? servicios : []}
+              onAlternar={alternarServicio}
+            />
+            {servicios.length > 0 && reservaLista && !reserva && (
+              <div className="carta-servicios-resumen text-center mt-3">
+                <p className="carta-eleccion mb-2">
+                  {servicios.length} servicio{servicios.length === 1 ? '' : 's'} · {minutosElegidos} min · {pesos(totalElegidos)}
+                </p>
+                <BotonAccion icono="check" titulo="Continuar con la reserva" variant="primary" onClick={continuarServicios} />
               </div>
-            ))}
+            )}
           </section>
 
           <section id="galeria" className="carta-seccion">
@@ -448,109 +606,116 @@ export default function PaginaReserva() {
         </>
       )}
 
-      <section id="reserva" className="carta-seccion">
-        <h2 className="carta-titulo">Reserva tu cita</h2>
+      <section id="reserva" className="carta-seccion" ref={panelReserva}>
+        <h2 className="carta-titulo">{modo === 'consultar' ? 'Tu cita' : 'Reserva tu cita'}</h2>
         <Redes />
         <div className="carta-reserva">
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && modo === 'reservar' && <Alert variant="danger">{error}</Alert>}
         {catalogo === null ? (
           <div className="d-flex justify-content-center py-4">
             <Spinner animation="border" role="status">
               <span className="visually-hidden">Cargando reserva</span>
             </Spinner>
           </div>
+        ) : modo === 'consultar' ? (
+          <ConsultaCita barberos={barberos} onCerrar={abrirReserva} />
         ) : !reservaLista ? (
-          <p className="text-secondary text-center mb-0">Pulsa Reservar cita para abrir el formulario.</p>
+          <div className="text-center">
+            <p className="text-secondary mb-3">Pulsa Reservar cita, Consultar cita o elige un servicio arriba.</p>
+            <GrupoAcciones className="justify-content-center">
+              <BotonAccion icono="calendar" titulo="Reservar cita" variant="primary" onClick={abrirReserva} />
+              <BotonAccion icono="search" titulo="Consultar cita" onClick={abrirConsulta} />
+            </GrupoAcciones>
+          </div>
         ) : reserva ? (
-          <Alert variant="light" className="border border-dark text-black mb-0">
-            Listo, {reserva.cliente}. Tu cita con {reserva.profesional} quedó para {reserva.inicio.slice(0, 16)} ({reserva.servicios.join(', ')}).
-          </Alert>
+          <div className="carta-confirmacion" role="status">
+            <p className="carta-confirmacion-eyebrow">Reserva confirmada</p>
+            <h3 className="carta-confirmacion-titulo">Cita reservada</h3>
+            <p className="carta-confirmacion-saludo">
+              Listo, <strong>{reserva.cliente}</strong>. Tu cita quedó agendada.
+            </p>
+            <dl className="carta-confirmacion-datos">
+              <div>
+                <dt>Servicios</dt>
+                <dd>{reserva.servicios.join(', ')}</dd>
+              </div>
+              <div>
+                <dt>Barbero</dt>
+                <dd>{reserva.profesional}</dd>
+              </div>
+              <div>
+                <dt>Día y hora</dt>
+                <dd>{formatearCita(reserva.inicio)}</dd>
+              </div>
+            </dl>
+            <p className="carta-confirmacion-nota">
+              Te enviamos la confirmación al correo y un recordatorio dos horas antes.
+            </p>
+            <BotonAccion icono="calendar" titulo="Reservar otra cita" variant="primary" onClick={nuevaReserva} />
+          </div>
         ) : (
           <Form onSubmit={confirmar}>
-            <Row>
-              <Col md={4}>
-                <Form.Group className="mb-3" controlId="nombre">
-                  <Form.Label>Nombre</Form.Label>
-                  <Form.Control value={nombre} required maxLength={120} autoComplete="name" onChange={(evento) => setNombre(evento.target.value)} />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3" controlId="telefono">
-                  <Form.Label>Teléfono</Form.Label>
-                  <Form.Control
-                    value={telefono}
-                    required
-                    minLength={7}
-                    maxLength={20}
-                    autoComplete="tel"
-                    onChange={(evento) => setTelefono(evento.target.value)}
-                    onBlur={reconocerTelefono}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group className="mb-3" controlId="correo">
-                  <Form.Label>Correo</Form.Label>
-                  <Form.Control type="email" value={correo} maxLength={160} autoComplete="email" onChange={(evento) => setCorreo(evento.target.value)} />
-                </Form.Group>
-              </Col>
-            </Row>
+            <ol className="carta-pasos-lista" aria-label="Pasos de la reserva">
+              <li className={paso === 'servicio' ? 'activo' : servicios.length ? 'hecho' : ''}>Servicios</li>
+              <li className={paso === 'barbero' ? 'activo' : profesionalId ? 'hecho' : ''}>Barbero</li>
+              <li className={paso === 'agenda' ? 'activo' : horario ? 'hecho' : ''}>Día y hora</li>
+              <li className={paso === 'datos' ? 'activo' : ''}>Tus datos</li>
+            </ol>
 
-            <h3 className="carta-agenda-titulo">Servicio</h3>
-            {grupos.length === 0 ? (
-              <p className="text-secondary">Todavía no hay servicios para reservar. El administrador los crea en la agenda.</p>
-            ) : grupos.map(([categoria, lista]) => (
-              <div key={categoria} className="mb-3">
-                <h4 className="inicio-categoria">{categoria}</h4>
-                <div className="carta-servicios">
-                  {lista.map((servicio) => {
-                    const activo = servicios.includes(servicio.id)
-                    return (
-                      <button
-                        key={servicio.id}
-                        type="button"
-                        className={activo ? 'carta-servicio activo' : 'carta-servicio'}
-                        onClick={() => cambiarServicio(servicio.id, !activo)}
-                      >
-                        <span className="carta-servicio-nombre">{servicio.nombre}</span>
-                        {servicio.descripcion ? <span className="carta-servicio-descripcion">{servicio.descripcion}</span> : null}
-                        <span className="carta-servicio-meta">{servicio.duracion_minutos} min</span>
-                        <span className="carta-servicio-precio">{pesos(servicio.precio)}</span>
-                        <span className="carta-elegir">{activo ? 'Elegido' : 'Elegir'}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+            {paso === 'servicio' && (
+              <div className="carta-paso">
+                <h3 className="carta-agenda-titulo">Elige los servicios</h3>
+                {servicios.length > 0 ? (
+                  <>
+                    <p className="text-secondary mb-2">
+                      Ya marcaste servicios arriba. Puedes seguir o volver a la lista para cambiarlos.
+                    </p>
+                    <p className="carta-eleccion mb-3">
+                      {nombresServicio.join(', ')} · {minutosElegidos} min · {pesos(totalElegidos)}
+                    </p>
+                    <GrupoAcciones>
+                      <BotonAccion
+                        icono="chevronLeft"
+                        titulo="Cambiar servicios"
+                        onClick={() => {
+                          document.getElementById('servicios')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }}
+                      />
+                      <BotonAccion icono="check" titulo="Continuar" variant="primary" onClick={continuarServicios} />
+                    </GrupoAcciones>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-secondary mb-3">Marca los que quieras incluir en la cita.</p>
+                    <ChecklistServicios
+                      idPrefijo="paso-servicio"
+                      grupos={grupos}
+                      seleccionados={servicios}
+                      onAlternar={alternarServicio}
+                    />
+                  </>
+                )}
               </div>
-            ))}
+            )}
 
-            {servicios.length > 0 && (
-              <>
-                <h3 className="carta-agenda-titulo mt-4">Profesional disponible</h3>
-                <Form.Group className="mb-3" controlId="fecha">
-                  <Form.Label>Día</Form.Label>
-                  <Form.Control type="date" required value={fecha} min={diaIso(new Date())} onChange={(evento) => setFecha(evento.target.value)} />
-                </Form.Group>
-                {cargandoHorarios ? (
-                  <Spinner animation="border" size="sm" role="status">
-                    <span className="visually-hidden">Buscando profesionales</span>
-                  </Spinner>
-                ) : disponibles.length === 0 ? (
-                  <p className="text-secondary">Ningún profesional tiene hora libre ese día para ese servicio.</p>
+            {paso === 'barbero' && (
+              <div className="carta-paso">
+                <h3 className="carta-agenda-titulo">Profesionales disponibles</h3>
+                <p className="carta-eleccion mb-3">
+                  Servicios: {nombresServicio.join(', ')} · {minutosElegidos} min · {pesos(totalElegidos)}
+                </p>
+                {barberos.length === 0 ? (
+                  <p className="text-secondary">Todavía no hay barberos disponibles.</p>
                 ) : (
                   <div className="carta-equipo mb-3">
-                    {disponibles.map((item) => {
-                      const activo = String(item.id) === String(profesionalId)
+                    {barberos.map((item) => {
                       const inicial = item.nombre.trim().charAt(0).toUpperCase()
                       return (
                         <button
                           key={item.id}
                           type="button"
-                          className={activo ? 'carta-pro activo' : 'carta-pro'}
-                          onClick={() => {
-                            setProfesionalId(String(item.id))
-                            setHorario('')
-                          }}
+                          className="carta-pro"
+                          onClick={() => elegirProfesional(item.id)}
                         >
                           {item.foto ? (
                             <img className="carta-foto" src={fotoSrc(item.foto)} alt="" />
@@ -558,33 +723,118 @@ export default function PaginaReserva() {
                             <span className="carta-foto carta-inicial" aria-hidden="true">{inicial}</span>
                           )}
                           <span className="carta-pro-nombre">{item.nombre}</span>
-                          <span className="carta-elegir">{activo ? 'Elegido' : 'Disponible'}</span>
+                          <span className="carta-elegir">Disponible</span>
                         </button>
                       )
                     })}
                   </div>
                 )}
-                {profesional && (
+                <BotonAccion icono="chevronLeft" titulo="Cambiar servicio" onClick={() => { setPaso('servicio'); reiniciarAgenda(); setServicios([]); irAReserva() }} />
+              </div>
+            )}
+
+            {paso === 'agenda' && (
+              <div className="carta-paso">
+                <h3 className="carta-agenda-titulo">Elige día y hora</h3>
+                <p className="carta-eleccion mb-3">
+                  {nombresServicio.join(', ')} con {profesional?.nombre}
+                </p>
+                <Form.Group className="mb-3" controlId="fecha">
+                  <Form.Label>Día</Form.Label>
+                  <Form.Control
+                    type="date"
+                    required
+                    value={fecha}
+                    min={hoy}
+                    onChange={(evento) => {
+                      setFecha(evento.target.value)
+                      setHorario('')
+                    }}
+                  />
+                </Form.Group>
+                {fecha === '' ? (
+                  <p className="text-secondary mb-3">Elige un día para ver las horas libres.</p>
+                ) : cargandoHorarios ? (
+                  <Spinner animation="border" size="sm" role="status" className="mb-3">
+                    <span className="visually-hidden">Buscando horas</span>
+                  </Spinner>
+                ) : horasLibres.length === 0 ? (
+                  <p className="text-secondary mb-3">Ese día no tiene horas libres. Prueba otra fecha.</p>
+                ) : (
                   <div className="carta-horas mb-4">
                     {horasLibres.map((hora) => (
-                      <Button key={hora} type="button" size="sm" variant={horario === hora ? 'primary' : 'outline-primary'} onClick={() => setHorario(hora)}>
+                      <Button
+                        key={hora}
+                        type="button"
+                        size="sm"
+                        variant={horario === hora ? 'primary' : 'outline-primary'}
+                        onClick={() => elegirHorario(hora)}
+                      >
                         {hora}
                       </Button>
                     ))}
                   </div>
                 )}
-              </>
+                <BotonAccion icono="chevronLeft" titulo="Cambiar barbero" onClick={() => { setPaso('barbero'); setFecha(''); setHorario(''); setHorasLibres([]); setProfesionalId(''); irAReserva() }} />
+              </div>
             )}
 
-            {servicios.length === 0 ? (
-              <p className="text-secondary mb-3">Elige un servicio para ver quién está disponible.</p>
-            ) : horario === '' ? (
-              <p className="text-secondary mb-3">Elige profesional y hora para confirmar.</p>
-            ) : null}
-
-            <Button type="submit" disabled={guardando || horario === '' || servicios.length === 0 || profesionalId === ''}>
-              {guardando ? 'Reservando…' : 'Confirmar reserva'}
-            </Button>
+            {paso === 'datos' && (
+              <div className="carta-paso">
+                <h3 className="carta-agenda-titulo">Tus datos</h3>
+                <p className="carta-eleccion mb-3">
+                  {nombresServicio.join(', ')} con {profesional?.nombre} el {formatearCita(`${fecha} ${horario}:00`)}.
+                </p>
+                <Row>
+                  <Col md={4}>
+                    <Form.Group className="mb-3" controlId="nombre">
+                      <Form.Label>Nombre</Form.Label>
+                      <Form.Control value={nombre} required maxLength={120} autoComplete="name" onChange={(evento) => setNombre(evento.target.value)} />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3" controlId="telefono">
+                      <Form.Label>Teléfono</Form.Label>
+                      <Form.Control
+                        value={telefono}
+                        required
+                        minLength={7}
+                        maxLength={20}
+                        autoComplete="tel"
+                        onChange={(evento) => setTelefono(evento.target.value)}
+                        onBlur={reconocerTelefono}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group className="mb-3" controlId="correo">
+                      <Form.Label>Correo</Form.Label>
+                      <Form.Control
+                        type="email"
+                        value={correo}
+                        required
+                        maxLength={160}
+                        autoComplete="email"
+                        onChange={(evento) => setCorreo(evento.target.value)}
+                      />
+                      <Form.Text className="text-secondary">
+                        Lo usaremos para confirmar y recordarte la cita.
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <GrupoAcciones>
+                  <BotonAccion icono="chevronLeft" titulo="Cambiar hora" onClick={() => { setPaso('agenda'); setHorario(''); irAReserva() }} />
+                  <BotonAccion
+                    icono="check"
+                    titulo={guardando ? 'Reservando…' : 'Confirmar reserva'}
+                    type="submit"
+                    variant="primary"
+                    disabled={guardando}
+                  />
+                </GrupoAcciones>
+              </div>
+            )}
           </Form>
         )}
         </div>
@@ -593,9 +843,9 @@ export default function PaginaReserva() {
       <section id="resenas" className="carta-seccion carta-final">
         <h2 className="carta-titulo">Reseñas</h2>
         {resenas.length === 0 ? (
-          <p className="text-secondary text-center mb-0">Todavía no hay reseñas.</p>
+          <p className="text-secondary text-center mb-4">Todavía no hay reseñas publicadas. Sé el primero en dejar la tuya.</p>
         ) : (
-          <div className="carta-resenas">
+          <div className="carta-resenas mb-4">
             {resenas.map((resena) => (
               <article key={resena.id} className="carta-resena">
                 <p className="carta-estrellas" aria-label={`${resena.calificacion} de 5`}>{estrellas(resena.calificacion)}</p>
@@ -605,6 +855,72 @@ export default function PaginaReserva() {
             ))}
           </div>
         )}
+        <div className="carta-reserva carta-resena-form">
+          <h3 className="carta-agenda-titulo">Deja tu reseña</h3>
+          <p className="text-secondary mb-3">
+            Cuéntanos tu experiencia. La revisamos antes de publicarla. Más adelante podremos enviarte una encuesta de satisfacción por correo.
+          </p>
+          {errorResena && <Alert variant="danger">{errorResena}</Alert>}
+          {avisoResena && <Alert variant="success">{avisoResena}</Alert>}
+          <Form onSubmit={enviarResena}>
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3" controlId="autorResenaPublica">
+                  <Form.Label>Nombre</Form.Label>
+                  <Form.Control
+                    value={autorResena}
+                    required
+                    maxLength={80}
+                    autoComplete="name"
+                    onChange={(evento) => setAutorResena(evento.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3" controlId="correoResenaPublica">
+                  <Form.Label>Correo</Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={correoResena}
+                    required
+                    maxLength={160}
+                    autoComplete="email"
+                    onChange={(evento) => setCorreoResena(evento.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3" controlId="notaResenaPublica">
+                  <Form.Label>Calificación</Form.Label>
+                  <Form.Select value={notaResena} onChange={(evento) => setNotaResena(evento.target.value)}>
+                    {[5, 4, 3, 2, 1].map((valor) => (
+                      <option key={valor} value={valor}>{valor} ★</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Form.Group className="mb-3" controlId="textoResenaPublica">
+              <Form.Label>Tu reseña</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={textoResena}
+                required
+                minLength={8}
+                maxLength={400}
+                onChange={(evento) => setTextoResena(evento.target.value)}
+              />
+            </Form.Group>
+            <BotonAccion
+              icono="check"
+              titulo={enviandoResena ? 'Enviando…' : 'Enviar reseña'}
+              type="submit"
+              variant="primary"
+              disabled={enviandoResena}
+            />
+          </Form>
+        </div>
       </section>
 
       <section id="contacto" className="carta-seccion carta-final">

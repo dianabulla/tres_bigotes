@@ -25,6 +25,7 @@ final class ColaboradoresController
         $router->registrar('POST', '/api/colaboradores/{id}/foto', [self::class, 'foto']);
         $router->registrar('GET', '/api/resenas', [self::class, 'listarResenas']);
         $router->registrar('POST', '/api/resenas', [self::class, 'crearResena']);
+        $router->registrar('PUT', '/api/resenas/{id}/publicar', [self::class, 'publicarResena']);
         $router->registrar('DELETE', '/api/resenas/{id}', [self::class, 'eliminarResena']);
     }
 
@@ -184,11 +185,27 @@ final class ColaboradoresController
         }
         $id = Resena::crear(Conexion::obtener(), $sede, [
             'autor' => $autor,
+            'correo' => null,
             'texto' => $texto,
             'calificacion' => $nota,
+            'origen' => 'admin',
+            'publicada' => true,
             'creado_en' => (new DateTime('now'))->format('Y-m-d H:i:s'),
         ]);
         Respuesta::json(200, ['id' => $id]);
+    }
+
+    public static function publicarResena(Peticion $peticion): void
+    {
+        $sede = self::exigirAdministrador($peticion);
+        $id = $peticion->params['id'] ?? '';
+        if (!is_string($id) || !ctype_digit($id) || (int) $id < 1) {
+            Respuesta::json(404, ['error' => 'Reseña no encontrada']);
+        }
+        if (!Resena::publicar(Conexion::obtener(), $sede, (int) $id)) {
+            Respuesta::json(404, ['error' => 'Reseña no encontrada']);
+        }
+        Respuesta::json(200, ['ok' => true]);
     }
 
     public static function eliminarResena(Peticion $peticion): void

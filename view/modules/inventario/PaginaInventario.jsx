@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
+import { Alert, Badge, Form, Modal, Spinner, Table } from 'react-bootstrap'
 import { guardarProducto, listarMovimientos, listarProductos, moverProducto } from '../../cliente/inventario'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 import { useSesion } from '../../components/Sesion'
 import { tienePermiso } from '../registro'
 
@@ -72,6 +73,26 @@ export default function PaginaInventario() {
     }
   }
 
+  async function cambiarActivo(producto, activo) {
+    setError('')
+    setAviso('')
+    try {
+      await guardarProducto({
+        id: producto.id,
+        nombre: producto.nombre,
+        tipo: producto.tipo,
+        precio_compra: producto.precio_compra,
+        precio_venta: producto.precio_venta ?? '',
+        stock_minimo: producto.stock_minimo,
+        activo,
+      })
+      setAviso(activo ? 'Producto activado.' : 'Producto eliminado.')
+      await cargar()
+    } catch (fallo) {
+      setError(fallo.message)
+    }
+  }
+
   async function abrirMovimiento(producto) {
     setErrorFormulario('')
     setMovimiento(movimientoVacio)
@@ -108,7 +129,14 @@ export default function PaginaInventario() {
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Inventario</h1>
-        {esAdmin && <Button onClick={() => { setErrorFormulario(''); setFormulario({ ...formularioVacio }) }}>Nuevo producto</Button>}
+        {esAdmin && (
+          <BotonAccion
+            icono="plus"
+            titulo="Nuevo producto"
+            variant="primary"
+            onClick={() => { setErrorFormulario(''); setFormulario({ ...formularioVacio }) }}
+          />
+        )}
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {aviso && <Alert variant="light" className="border border-dark text-black" onClose={() => setAviso('')} dismissible>{aviso}</Alert>}
@@ -147,13 +175,20 @@ export default function PaginaInventario() {
                   {producto.activo && !producto.alerta && <Badge className="marca-baja">En stock</Badge>}
                 </td>
                 {esAdmin && (
-                  <td className="text-end text-nowrap">
-                    <Button size="sm" variant="outline-primary" className="me-2" onClick={() => { setErrorFormulario(''); setFormulario({ ...producto, precio_compra: producto.precio_compra ?? '', precio_venta: producto.precio_venta ?? '', stock_inicial: '0' }) }}>
-                      Editar
-                    </Button>
-                    <Button size="sm" variant="outline-primary" onClick={() => abrirMovimiento(producto)}>
-                      Movimiento
-                    </Button>
+                  <td className="text-end">
+                    <GrupoAcciones>
+                      <BotonAccion
+                        icono="pencil"
+                        titulo="Editar"
+                        onClick={() => { setErrorFormulario(''); setFormulario({ ...producto, precio_compra: producto.precio_compra ?? '', precio_venta: producto.precio_venta ?? '', stock_inicial: '0' }) }}
+                      />
+                      {producto.activo ? (
+                        <BotonAccion icono="trash" titulo="Eliminar" onClick={() => cambiarActivo(producto, false)} />
+                      ) : (
+                        <BotonAccion icono="check" titulo="Activar" variant="primary" onClick={() => cambiarActivo(producto, true)} />
+                      )}
+                      <BotonAccion icono="box" titulo="Movimiento" onClick={() => abrirMovimiento(producto)} />
+                    </GrupoAcciones>
                   </td>
                 )}
               </tr>
@@ -210,8 +245,8 @@ export default function PaginaInventario() {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setFormulario(null)}>Cancelar</Button>
-            <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
+            <BotonAccion icono="x" titulo="Cancelar" onClick={() => setFormulario(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>
@@ -271,8 +306,8 @@ export default function PaginaInventario() {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setProductoMovimiento(null)}>Cerrar</Button>
-            <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Registrar'}</Button>
+            <BotonAccion icono="x" titulo="Cerrar" onClick={() => setProductoMovimiento(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Registrar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>

@@ -1,0 +1,8 @@
+Máster del video de fondo de la portada.
+
+No va al hosting. El archivo publicado es view/public/media/fondo-opt.mp4
+(versión liviana 720x1280, 24 fps, sin audio).
+
+Para regenerar el opt:
+
+  ffmpeg -y -i media-fuente/fondo.mp4 -an -vf "scale=720:1280:flags=lanczos,fps=24" -c:v libx264 -preset slow -crf 29 -profile:v high -pix_fmt yuv420p -movflags +faststart view/public/media/fondo-opt.mp4

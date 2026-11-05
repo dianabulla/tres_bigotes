@@ -10,10 +10,22 @@ use TresBigotes\Config\Conexion;
 final class Caja
 {
     public const MEDIOS = [
-        ['codigo' => 'nequi', 'nombre' => 'Nequi'],
-        ['codigo' => 'daviplata', 'nombre' => 'Daviplata'],
-        ['codigo' => 'qr', 'nombre' => 'QR'],
+        ['codigo' => 'efectivo', 'nombre' => 'Efectivo'],
+        ['codigo' => 'digital', 'nombre' => 'Digital'],
     ];
+
+    public static function nombresMedios(): string
+    {
+        $nombres = [];
+        foreach (self::MEDIOS as $medio) {
+            $nombres[] = $medio['nombre'];
+        }
+        if (count($nombres) === 1) {
+            return $nombres[0];
+        }
+        $ultimo = array_pop($nombres);
+        return implode(', ', $nombres) . ' y ' . $ultimo;
+    }
 
     public static function turnoAbierto(PDO $pdo, int $sede, bool $bloquear): ?array
     {
@@ -67,6 +79,89 @@ final class Caja
         return $filas;
     }
 
+    public static function serviciosActivos(int $sede): array
+    {
+        $consulta = Conexion::obtener()->prepare(
+            'SELECT id, nombre, categoria, precio
+             FROM servicio
+             WHERE establecimiento_id = :sede AND activo = 1
+             ORDER BY categoria, nombre, id'
+        );
+        $consulta->execute(['sede' => $sede]);
+        $filas = [];
+        foreach ($consulta->fetchAll() as $fila) {
+            $filas[] = [
+                'id' => (int) $fila['id'],
+                'nombre' => $fila['nombre'],
+                'categoria' => $fila['categoria'],
+                'precio' => $fila['precio'],
+            ];
+        }
+        return $filas;
+    }
+
+    public static function colaboradoresActivos(int $sede): array
+    {
+        $consulta = Conexion::obtener()->prepare(
+            'SELECT id, nombre
+             FROM colaborador
+             WHERE establecimiento_id = :sede AND activo = 1
+             ORDER BY nombre, id'
+        );
+        $consulta->execute(['sede' => $sede]);
+        $filas = [];
+        foreach ($consulta->fetchAll() as $fila) {
+            $filas[] = [
+                'id' => (int) $fila['id'],
+                'nombre' => $fila['nombre'],
+            ];
+        }
+        return $filas;
+    }
+
+    public static function bloquearServicio(PDO $pdo, int $sede, int $id): ?array
+    {
+        $consulta = $pdo->prepare(
+            'SELECT id, nombre, precio, activo
+             FROM servicio
+             WHERE id = :id AND establecimiento_id = :sede
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $consulta->execute(['id' => $id, 'sede' => $sede]);
+        $fila = $consulta->fetch();
+        if (!is_array($fila)) {
+            return null;
+        }
+        return [
+            'id' => (int) $fila['id'],
+            'nombre' => $fila['nombre'],
+            'precio' => $fila['precio'],
+            'activo' => (int) $fila['activo'] === 1,
+        ];
+    }
+
+    public static function bloquearColaborador(PDO $pdo, int $sede, int $id): ?array
+    {
+        $consulta = $pdo->prepare(
+            'SELECT id, nombre, activo
+             FROM colaborador
+             WHERE id = :id AND establecimiento_id = :sede
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $consulta->execute(['id' => $id, 'sede' => $sede]);
+        $fila = $consulta->fetch();
+        if (!is_array($fila)) {
+            return null;
+        }
+        return [
+            'id' => (int) $fila['id'],
+            'nombre' => $fila['nombre'],
+            'activo' => (int) $fila['activo'] === 1,
+        ];
+    }
+
     public static function bloquearProducto(PDO $pdo, int $sede, int $id): ?array
     {
         $consulta = $pdo->prepare(
@@ -84,18 +179,20 @@ final class Caja
     public static function citasPorCobrar(int $sede): array
     {
         $consulta = Conexion::obtener()->prepare(
-            'SELECT c.id, c.inicio, cl.nombre AS cliente, co.nombre AS profesional,
-                    s.nombre AS servicio, cs.precio_aplicado
+            'SELECT c.id, c.inicio, c.estado, cl.nombre AS cliente, co.nombre AS profesional,
+                    s.id AS servicio_id, s.nombre AS servicio, cs.precio_aplicado
              FROM cita c
              INNER JOIN cliente cl ON cl.id = c.cliente_id
              INNER JOIN colaborador co ON co.id = c.colaborador_id
              INNER JOIN cita_servicio cs ON cs.cita_id = c.id
              INNER JOIN servicio s ON s.id = cs.servicio_id
              WHERE c.establecimiento_id = :sede
-               AND c.estado = \'completada\'
+               AND c.estado IN (\'pendiente\', \'en_proceso\', \'completada\')
+               AND c.inicio >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+               AND c.inicio < DATE_ADD(CURDATE(), INTERVAL 2 DAY)
                AND NOT EXISTS (SELECT 1 FROM venta v WHERE v.cita_id = c.id)
-             ORDER BY c.inicio DESC, c.id DESC, cs.id
-             LIMIT 80'
+             ORDER BY c.inicio ASC, c.id ASC, cs.id
+             LIMIT 120'
         );
         $consulta->execute(['sede' => $sede]);
         $citas = [];
@@ -105,6 +202,7 @@ final class Caja
                 $citas[$id] = [
                     'id' => $id,
                     'inicio' => $fila['inicio'],
+                    'estado' => $fila['estado'],
                     'cliente' => $fila['cliente'],
                     'profesional' => $fila['profesional'],
                     'servicios' => [],
@@ -112,6 +210,7 @@ final class Caja
                 ];
             }
             $citas[$id]['servicios'][] = [
+                'servicio_id' => (int) $fila['servicio_id'],
                 'nombre' => $fila['servicio'],
                 'precio_aplicado' => $fila['precio_aplicado'],
             ];
@@ -240,8 +339,14 @@ final class Caja
         ]);
     }
 
-    public static function totales(PDO $pdo, int $turnoId): array
+    public static function totales(PDO $pdo, int $turnoId, string $saldoInicial = '0.00'): array
     {
+        $centavos = [];
+        foreach (self::MEDIOS as $medio) {
+            $centavos[$medio['codigo']] = 0;
+        }
+        $centavos['efectivo'] = self::centavos($saldoInicial);
+
         $consulta = $pdo->prepare(
             'SELECT p.medio, SUM(p.monto) AS monto
              FROM pago p
@@ -250,14 +355,94 @@ final class Caja
              GROUP BY p.medio'
         );
         $consulta->execute(['turno' => $turnoId]);
-        $montos = [];
-        foreach (self::MEDIOS as $medio) {
-            $montos[$medio['codigo']] = '0.00';
-        }
         foreach ($consulta->fetchAll() as $fila) {
-            $montos[$fila['medio']] = number_format((float) $fila['monto'], 2, '.', '');
+            $codigo = $fila['medio'];
+            if (!isset($centavos[$codigo])) {
+                continue;
+            }
+            $centavos[$codigo] += self::centavos(number_format((float) $fila['monto'], 2, '.', ''));
+        }
+
+        $ajustes = $pdo->prepare(
+            'SELECT medio, tipo, SUM(monto) AS monto
+             FROM movimiento_caja
+             WHERE turno_caja_id = :turno
+             GROUP BY medio, tipo'
+        );
+        $ajustes->execute(['turno' => $turnoId]);
+        foreach ($ajustes->fetchAll() as $fila) {
+            $codigo = $fila['medio'];
+            if (!isset($centavos[$codigo])) {
+                continue;
+            }
+            $monto = self::centavos(number_format((float) $fila['monto'], 2, '.', ''));
+            if ($fila['tipo'] === 'ingreso') {
+                $centavos[$codigo] += $monto;
+            } else {
+                $centavos[$codigo] -= $monto;
+            }
+        }
+
+        $montos = [];
+        foreach ($centavos as $codigo => $valor) {
+            $montos[$codigo] = self::desdeCentavos($valor);
         }
         return $montos;
+    }
+
+    public static function crearMovimiento(
+        PDO $pdo,
+        int $sede,
+        int $turnoId,
+        int $usuarioId,
+        string $tipo,
+        string $medio,
+        string $monto,
+        string $motivo
+    ): int {
+        $insertar = $pdo->prepare(
+            'INSERT INTO movimiento_caja
+             (establecimiento_id, turno_caja_id, usuario_id, tipo, medio, monto, motivo, creado_en)
+             VALUES (:sede, :turno, :usuario_id, :tipo, :medio, :monto, :motivo, :creado_en)'
+        );
+        $insertar->execute([
+            'sede' => $sede,
+            'turno' => $turnoId,
+            'usuario_id' => $usuarioId,
+            'tipo' => $tipo,
+            'medio' => $medio,
+            'monto' => $monto,
+            'motivo' => $motivo,
+            'creado_en' => date('Y-m-d H:i:s'),
+        ]);
+        return (int) $pdo->lastInsertId();
+    }
+
+    public static function movimientos(PDO $pdo, int $turnoId): array
+    {
+        $consulta = $pdo->prepare(
+            'SELECT m.id, m.tipo, m.medio, m.monto, m.motivo, m.creado_en, u.nombre AS usuario
+             FROM movimiento_caja m
+             INNER JOIN usuario u ON u.id = m.usuario_id
+             WHERE m.turno_caja_id = :turno
+             ORDER BY m.id DESC
+             LIMIT 40'
+        );
+        $consulta->execute(['turno' => $turnoId]);
+        $lista = [];
+        foreach ($consulta->fetchAll() as $fila) {
+            $lista[] = [
+                'id' => (int) $fila['id'],
+                'tipo' => $fila['tipo'],
+                'medio' => $fila['medio'],
+                'nombre_medio' => self::nombreMedio($fila['medio']),
+                'monto' => $fila['monto'],
+                'motivo' => $fila['motivo'],
+                'creado_en' => $fila['creado_en'],
+                'usuario' => $fila['usuario'],
+            ];
+        }
+        return $lista;
     }
 
     public static function ventas(PDO $pdo, int $turnoId): array
@@ -315,18 +500,22 @@ final class Caja
         return $guardar->rowCount() === 1;
     }
 
-    public static function cierres(int $sede): array
+    public static function cierres(int $sede, ?string $desde = null, ?string $hasta = null): array
     {
         $pdo = Conexion::obtener();
-        $consulta = $pdo->prepare(
-            'SELECT t.id, t.saldo_inicial, t.abierto_en, t.cerrado_en, u.nombre AS usuario
+        $sql = 'SELECT t.id, t.saldo_inicial, t.abierto_en, t.cerrado_en, u.nombre AS usuario
              FROM turno_caja t
              INNER JOIN usuario u ON u.id = t.usuario_id
-             WHERE t.establecimiento_id = :sede AND t.estado = \'cerrado\'
-             ORDER BY t.cerrado_en DESC, t.id DESC
-             LIMIT 20'
-        );
-        $consulta->execute(['sede' => $sede]);
+             WHERE t.establecimiento_id = :sede AND t.estado = \'cerrado\'';
+        $params = ['sede' => $sede];
+        if ($desde !== null && $hasta !== null) {
+            $sql .= ' AND t.cerrado_en >= :desde AND t.cerrado_en < :hasta';
+            $params['desde'] = $desde;
+            $params['hasta'] = $hasta;
+        }
+        $sql .= ' ORDER BY t.cerrado_en DESC, t.id DESC LIMIT 100';
+        $consulta = $pdo->prepare($sql);
+        $consulta->execute($params);
         $cierres = [];
         foreach ($consulta->fetchAll() as $fila) {
             $cierres[] = self::presentarCierre($pdo, $fila);
@@ -337,22 +526,33 @@ final class Caja
     public static function presentarTurno(PDO $pdo, array $fila): array
     {
         $id = (int) $fila['id'];
-        $totales = self::totales($pdo, $id);
+        $base = number_format((float) $fila['saldo_inicial'], 2, '.', '');
+        $totales = self::totales($pdo, $id, $base);
         $medios = [];
         foreach (self::MEDIOS as $medio) {
-            $medios[] = [
-                'medio' => $medio['codigo'],
+            $codigo = $medio['codigo'];
+            $total = $totales[$codigo];
+            $linea = [
+                'medio' => $codigo,
                 'nombre' => $medio['nombre'],
-                'monto_sistema' => $totales[$medio['codigo']],
+                'monto_sistema' => $total,
             ];
+            if ($codigo === 'efectivo') {
+                $linea['base_apertura'] = $base;
+                $linea['sin_base'] = self::desdeCentavos(
+                    self::centavos($total) - self::centavos($base)
+                );
+            }
+            $medios[] = $linea;
         }
         return [
             'id' => $id,
-            'saldo_inicial' => $fila['saldo_inicial'],
+            'saldo_inicial' => $base,
             'abierto_en' => $fila['abierto_en'],
             'usuario' => $fila['usuario'],
             'medios' => $medios,
             'ventas' => self::ventas($pdo, $id),
+            'ajustes' => self::movimientos($pdo, $id),
         ];
     }
 

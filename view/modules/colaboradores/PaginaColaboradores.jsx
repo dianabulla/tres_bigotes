@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
-import { crearResena, eliminarResena, guardarColaborador, listarColaboradores, listarResenas, subirFotoColaborador } from '../../cliente/colaboradores'
+import { crearResena, eliminarResena, guardarColaborador, listarColaboradores, listarResenas, publicarResena, subirFotoColaborador } from '../../cliente/colaboradores'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 
 const formularioVacio = {
   id: null,
@@ -132,6 +133,17 @@ export default function PaginaColaboradores() {
     }
   }
 
+  async function aprobarResena(id) {
+    setError('')
+    try {
+      await publicarResena(id)
+      setAviso('Reseña publicada en la carta.')
+      await cargar()
+    } catch (fallo) {
+      setError(fallo.message)
+    }
+  }
+
   async function quitarResena(id) {
     setError('')
     try {
@@ -146,7 +158,7 @@ export default function PaginaColaboradores() {
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Colaboradores</h1>
-        <Button onClick={abrirNuevo}>Nuevo colaborador</Button>
+        <BotonAccion icono="plus" titulo="Nuevo colaborador" variant="primary" onClick={abrirNuevo} />
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {aviso && <Alert variant="light" className="border border-dark text-black" onClose={() => setAviso('')} dismissible>{aviso}</Alert>}
@@ -180,19 +192,15 @@ export default function PaginaColaboradores() {
                     {colaborador.activo ? 'Activo' : 'De baja'}
                   </Badge>
                 </td>
-                <td className="text-end text-nowrap">
-                  <Button size="sm" variant="outline-primary" className="me-2" onClick={() => abrirEdicion(colaborador)}>
-                    Editar
-                  </Button>
-                  {colaborador.activo ? (
-                    <Button size="sm" variant="outline-primary" onClick={() => cambiarActivo(colaborador, false)}>
-                      Dar de baja
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="primary" onClick={() => cambiarActivo(colaborador, true)}>
-                      Activar
-                    </Button>
-                  )}
+                <td className="text-end">
+                  <GrupoAcciones>
+                    <BotonAccion icono="pencil" titulo="Editar" onClick={() => abrirEdicion(colaborador)} />
+                    {colaborador.activo ? (
+                      <BotonAccion icono="trash" titulo="Eliminar" onClick={() => cambiarActivo(colaborador, false)} />
+                    ) : (
+                      <BotonAccion icono="check" titulo="Activar" variant="primary" onClick={() => cambiarActivo(colaborador, true)} />
+                    )}
+                  </GrupoAcciones>
                 </td>
               </tr>
             ))}
@@ -275,17 +283,14 @@ export default function PaginaColaboradores() {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setFormulario(null)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
+            <BotonAccion icono="x" titulo="Cancelar" variant="outline-primary" onClick={() => setFormulario(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>
 
       <h2 className="h4 mt-5">Reseñas de la carta</h2>
+      <p className="text-secondary">Las que envían los clientes quedan pendientes hasta que las publiques.</p>
       <Form className="mb-3" onSubmit={guardarResena}>
         <Row>
           <Col md={4}>
@@ -311,20 +316,37 @@ export default function PaginaColaboradores() {
             </Form.Group>
           </Col>
         </Row>
-        <Button type="submit">Publicar reseña</Button>
+        <BotonAccion icono="check" titulo="Publicar reseña" type="submit" variant="primary" />
       </Form>
       {resenas.length === 0 ? (
         <p className="text-secondary">Todavía no hay reseñas en la carta.</p>
       ) : (
         <Table responsive size="sm">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Nota</th>
+              <th>Origen</th>
+              <th>Estado</th>
+              <th>Texto</th>
+              <th />
+            </tr>
+          </thead>
           <tbody>
             {resenas.map((resena) => (
               <tr key={resena.id}>
                 <td>{resena.autor}</td>
                 <td>{resena.calificacion}</td>
+                <td>{resena.origen === 'cliente' ? 'Cliente' : 'Admin'}</td>
+                <td>{resena.publicada ? 'Publicada' : 'Pendiente'}</td>
                 <td>{resena.texto}</td>
                 <td className="text-end">
-                  <Button size="sm" variant="outline-primary" type="button" onClick={() => quitarResena(resena.id)}>Quitar</Button>
+                  <GrupoAcciones>
+                    {!resena.publicada && (
+                      <BotonAccion icono="check" titulo="Publicar" variant="primary" onClick={() => aprobarResena(resena.id)} />
+                    )}
+                    <BotonAccion icono="trash" titulo="Quitar" onClick={() => quitarResena(resena.id)} />
+                  </GrupoAcciones>
                 </td>
               </tr>
             ))}

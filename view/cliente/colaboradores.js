@@ -46,6 +46,10 @@ export function crearResena(datos) {
   return solicitar('/api/resenas', { metodo: 'POST', cuerpo: datos })
 }
 
+export function publicarResena(id) {
+  return solicitar(`/api/resenas/${id}/publicar`, { metodo: 'PUT' })
+}
+
 export function eliminarResena(id) {
   return solicitar(`/api/resenas/${id}`, { metodo: 'DELETE' })
 }

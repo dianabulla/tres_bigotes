@@ -9,14 +9,16 @@ use TresBigotes\Config\Conexion;
 
 final class Resena
 {
-    public static function listar(int $sede): array
+    public static function listar(int $sede, bool $soloPublicadas = false): array
     {
-        $consulta = Conexion::obtener()->prepare(
-            'SELECT id, autor, texto, calificacion, creado_en
-             FROM resena
-             WHERE establecimiento_id = :sede
-             ORDER BY creado_en DESC, id DESC'
-        );
+        $sql = 'SELECT id, autor, correo, texto, calificacion, origen, publicada, creado_en
+                FROM resena
+                WHERE establecimiento_id = :sede';
+        if ($soloPublicadas) {
+            $sql .= ' AND publicada = 1';
+        }
+        $sql .= ' ORDER BY creado_en DESC, id DESC';
+        $consulta = Conexion::obtener()->prepare($sql);
         $consulta->execute(['sede' => $sede]);
         $filas = [];
         foreach ($consulta->fetchAll() as $fila) {
@@ -28,17 +30,31 @@ final class Resena
     public static function crear(PDO $pdo, int $sede, array $datos): int
     {
         $insertar = $pdo->prepare(
-            'INSERT INTO resena (establecimiento_id, autor, texto, calificacion, creado_en)
-             VALUES (:sede, :autor, :texto, :nota, :creado)'
+            'INSERT INTO resena (establecimiento_id, autor, correo, texto, calificacion, origen, publicada, creado_en)
+             VALUES (:sede, :autor, :correo, :texto, :nota, :origen, :publicada, :creado)'
         );
         $insertar->execute([
             'sede' => $sede,
             'autor' => $datos['autor'],
+            'correo' => $datos['correo'] ?? null,
             'texto' => $datos['texto'],
             'nota' => $datos['calificacion'],
+            'origen' => $datos['origen'] ?? 'admin',
+            'publicada' => !empty($datos['publicada']) ? 1 : 0,
             'creado' => $datos['creado_en'],
         ]);
         return (int) $pdo->lastInsertId();
+    }
+
+    public static function publicar(PDO $pdo, int $sede, int $id): bool
+    {
+        $guardar = $pdo->prepare(
+            'UPDATE resena
+             SET publicada = 1
+             WHERE id = :id AND establecimiento_id = :sede'
+        );
+        $guardar->execute(['id' => $id, 'sede' => $sede]);
+        return $guardar->rowCount() > 0;
     }
 
     public static function eliminar(PDO $pdo, int $sede, int $id): bool
@@ -55,8 +71,11 @@ final class Resena
         return [
             'id' => (int) $fila['id'],
             'autor' => $fila['autor'],
+            'correo' => $fila['correo'] ?? null,
             'texto' => $fila['texto'],
             'calificacion' => (int) $fila['calificacion'],
+            'origen' => $fila['origen'] ?? 'admin',
+            'publicada' => (int) ($fila['publicada'] ?? 1) === 1,
             'creado_en' => $fila['creado_en'],
         ];
     }

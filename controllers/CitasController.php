@@ -11,8 +11,10 @@ use TresBigotes\Api\Peticion;
 use TresBigotes\Api\Respuesta;
 use TresBigotes\Api\Router;
 use TresBigotes\Config\Conexion;
+use TresBigotes\Models\Aviso;
 use TresBigotes\Models\Cita;
 use TresBigotes\Models\Cliente;
+use TresBigotes\Models\Horario;
 use TresBigotes\Models\Producto;
 use TresBigotes\Models\Resena;
 use TresBigotes\Models\Servicio;
@@ -27,10 +29,15 @@ final class CitasController
         $router->registrar('GET', '/api/clientes', [self::class, 'buscarClientes']);
         $router->registrar('GET', '/api/citas', [self::class, 'listar']);
         $router->registrar('POST', '/api/citas', [self::class, 'crear']);
+        $router->registrar('PUT', '/api/citas/{id}', [self::class, 'actualizar']);
         $router->registrar('PUT', '/api/citas/{id}/estado', [self::class, 'estado']);
         $router->registrar('GET', '/api/reserva', [self::class, 'catalogoPublico'], true);
         $router->registrar('GET', '/api/reserva/cliente', [self::class, 'clientePublico'], true);
         $router->registrar('GET', '/api/reserva/horarios', [self::class, 'horariosPublicos'], true);
+        $router->registrar('GET', '/api/reserva/citas', [self::class, 'citasPublicas'], true);
+        $router->registrar('POST', '/api/reserva/citas/{id}/cancelar', [self::class, 'cancelarPublico'], true);
+        $router->registrar('PUT', '/api/reserva/citas/{id}', [self::class, 'reagendarPublico'], true);
+        $router->registrar('POST', '/api/reserva/resenas', [self::class, 'crearResenaPublica'], true);
         $router->registrar('POST', '/api/reserva', [self::class, 'reservarPublico'], true);
     }
 
@@ -213,6 +220,10 @@ final class CitasController
                 $elegidos[] = $servicio;
             }
             $fin = date('Y-m-d H:i:s', strtotime($inicio) + ($minutos * 60));
+            if (!Horario::permitido($sede, (int) $colaboradorId, $inicio, $minutos)) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Ese horario no está disponible']);
+            }
             if (Cita::haySolape($pdo, $sede, (int) $colaboradorId, $inicio, $fin)) {
                 $pdo->rollBack();
                 Respuesta::json(422, ['error' => 'Ese profesional ya tiene una cita en ese horario']);
@@ -221,7 +232,7 @@ final class CitasController
             foreach ($elegidos as $servicio) {
                 Cita::agregarServicio($pdo, $citaId, (int) $servicio['id'], number_format((float) $servicio['precio'], 2, '.', ''));
             }
-            $aviso = strtotime($inicio) - 3600;
+            $aviso = strtotime($inicio) - 7200;
             if ($aviso < time()) {
                 $aviso = time();
             }
@@ -233,6 +244,97 @@ final class CitasController
             }
             if ((string) $e->getCode() === '23000') {
                 Respuesta::json(422, ['error' => 'Ya hay un cliente con ese teléfono']);
+            }
+            throw $e;
+        }
+        Aviso::enviarConfirmacion($citaId);
+        $dia = substr($inicio, 0, 10);
+        Respuesta::json(200, [
+            'citas' => Cita::listar($sede, $dia . ' 00:00:00', date('Y-m-d 00:00:00', strtotime($dia . ' +1 day')), null),
+        ]);
+    }
+
+    public static function actualizar(Peticion $peticion): void
+    {
+        $sede = self::exigirReserva($peticion);
+        $id = self::id($peticion, 'Cita no encontrada');
+        $inicio = self::fecha($peticion->cuerpo['inicio'] ?? null, 'La cita necesita fecha y hora');
+        $notas = trim((string) ($peticion->cuerpo['notas'] ?? ''));
+        if (mb_strlen($notas) > 500) {
+            Respuesta::json(422, ['error' => 'Las notas no pueden pasar de 500 caracteres']);
+        }
+        $colaboradorId = $peticion->cuerpo['colaborador_id'] ?? null;
+        if (!is_numeric($colaboradorId) || (int) $colaboradorId < 1 || (int) $colaboradorId != $colaboradorId) {
+            Respuesta::json(422, ['error' => 'Elige un profesional']);
+        }
+        $servicios = self::idsServicio($peticion->cuerpo['servicios'] ?? null);
+        $pdo = Conexion::obtener();
+        $pdo->beginTransaction();
+        try {
+            $cita = Cita::bloquear($pdo, $sede, $id);
+            if ($cita === null) {
+                $pdo->rollBack();
+                Respuesta::json(404, ['error' => 'Cita no encontrada']);
+            }
+            if ($cita['estado'] !== 'pendiente') {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Solo se editan citas pendientes']);
+            }
+            $profesional = Cita::bloquearProfesional($pdo, $sede, (int) $colaboradorId);
+            if ($profesional === null) {
+                $pdo->rollBack();
+                Respuesta::json(404, ['error' => 'Profesional no encontrado']);
+            }
+            if (!$profesional['activo']) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'El profesional no está activo']);
+            }
+            $elegidos = [];
+            $minutos = 0;
+            foreach ($servicios as $servicioId) {
+                $servicio = Servicio::bloquear($pdo, $sede, $servicioId);
+                if ($servicio === null) {
+                    $pdo->rollBack();
+                    Respuesta::json(404, ['error' => 'Servicio no encontrado']);
+                }
+                if ((int) $servicio['activo'] !== 1) {
+                    $pdo->rollBack();
+                    Respuesta::json(422, ['error' => 'Ese servicio no está activo']);
+                }
+                $minutos += (int) $servicio['duracion_minutos'];
+                $elegidos[] = $servicio;
+            }
+            $fin = date('Y-m-d H:i:s', strtotime($inicio) + ($minutos * 60));
+            if (!Horario::permitido($sede, (int) $colaboradorId, $inicio, $minutos)) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Ese horario no está disponible']);
+            }
+            if (Cita::haySolape($pdo, $sede, (int) $colaboradorId, $inicio, $fin, $id)) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Ese profesional ya tiene una cita en ese horario']);
+            }
+            Cita::actualizarPendiente(
+                $pdo,
+                $sede,
+                $id,
+                (int) $colaboradorId,
+                $inicio,
+                $fin,
+                $notas === '' ? null : $notas
+            );
+            Cita::borrarServicios($pdo, $id);
+            foreach ($elegidos as $servicio) {
+                Cita::agregarServicio($pdo, $id, (int) $servicio['id'], number_format((float) $servicio['precio'], 2, '.', ''));
+            }
+            $aviso = strtotime($inicio) - 7200;
+            if ($aviso < time()) {
+                $aviso = time();
+            }
+            Cita::reprogramarAvisos($pdo, $id, date('Y-m-d H:i:s', $aviso));
+            $pdo->commit();
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
             throw $e;
         }
@@ -269,6 +371,9 @@ final class CitasController
                 Respuesta::json(422, ['error' => 'Esa cita no puede pasar a ese estado']);
             }
             Cita::cambiarEstado($pdo, $sede, $id, $estado);
+            if ($estado === 'cancelada') {
+                Aviso::cancelarPendientes($pdo, $id);
+            }
             if ($estado === 'completada') {
                 $faltante = Servicio::consumirInsumos($pdo, $sede, $id, (int) $peticion->usuario['id']);
                 if ($faltante !== null) {
@@ -293,7 +398,45 @@ final class CitasController
             'sede' => $sede['nombre'],
             'servicios' => Servicio::listar($sede['id'], true),
             'profesionales' => Cita::profesionales($sede['id']),
-            'resenas' => Resena::listar($sede['id']),
+            'resenas' => Resena::listar($sede['id'], true),
+        ]);
+    }
+
+    public static function crearResenaPublica(Peticion $peticion): void
+    {
+        $sede = self::sedePublica();
+        $autor = trim((string) ($peticion->cuerpo['autor'] ?? ''));
+        $texto = trim((string) ($peticion->cuerpo['texto'] ?? ''));
+        $correo = strtolower(trim((string) ($peticion->cuerpo['correo'] ?? '')));
+        $nota = $peticion->cuerpo['calificacion'] ?? null;
+        if ($autor === '' || mb_strlen($autor) > 80) {
+            Respuesta::json(422, ['error' => 'Escribe tu nombre']);
+        }
+        if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL) || mb_strlen($correo) > 160) {
+            Respuesta::json(422, ['error' => 'Escribe un correo válido']);
+        }
+        if (mb_strlen($texto) < 8 || mb_strlen($texto) > 400) {
+            Respuesta::json(422, ['error' => 'La reseña debe tener entre 8 y 400 caracteres']);
+        }
+        if (!is_int($nota) && !(is_string($nota) && ctype_digit($nota))) {
+            Respuesta::json(422, ['error' => 'La calificación va de 1 a 5']);
+        }
+        $nota = (int) $nota;
+        if ($nota < 1 || $nota > 5) {
+            Respuesta::json(422, ['error' => 'La calificación va de 1 a 5']);
+        }
+        $id = Resena::crear(Conexion::obtener(), $sede['id'], [
+            'autor' => $autor,
+            'correo' => $correo,
+            'texto' => $texto,
+            'calificacion' => $nota,
+            'origen' => 'cliente',
+            'publicada' => false,
+            'creado_en' => (new DateTime('now'))->format('Y-m-d H:i:s'),
+        ]);
+        Respuesta::json(200, [
+            'id' => $id,
+            'mensaje' => 'Gracias. Tu reseña quedó enviada y se publicará cuando la revisemos.',
         ]);
     }
 
@@ -324,6 +467,14 @@ final class CitasController
         $colaboradorId = $_GET['colaborador_id'] ?? '';
         $lista = self::listaServicios($_GET['servicios'] ?? '');
         $servicios = $lista === [] ? [] : self::idsServicio($lista);
+        $exceptoRaw = $_GET['excepto_cita_id'] ?? '';
+        $exceptoId = null;
+        if ($exceptoRaw !== '' && $exceptoRaw !== null) {
+            if (!is_string($exceptoRaw) || !ctype_digit($exceptoRaw) || (int) $exceptoRaw < 1) {
+                Respuesta::json(422, ['error' => 'Cita no válida']);
+            }
+            $exceptoId = (int) $exceptoRaw;
+        }
         $profesionales = Cita::profesionales($sede['id']);
         $minutos = $servicios === [] ? 30 : self::minutosActivos($sede['id'], $servicios);
 
@@ -345,7 +496,7 @@ final class CitasController
                 Respuesta::json(200, ['horarios' => []]);
             }
             Respuesta::json(200, [
-                'horarios' => self::huecosLibres($sede['id'], (int) $colaboradorId, $fecha, $minutos),
+                'horarios' => Horario::huecosLibres($sede['id'], (int) $colaboradorId, $fecha, $minutos, $exceptoId),
             ]);
         }
 
@@ -354,7 +505,7 @@ final class CitasController
         }
         $disponibles = [];
         foreach ($profesionales as $profesional) {
-            $horarios = self::huecosLibres($sede['id'], (int) $profesional['id'], $fecha, $minutos);
+            $horarios = Horario::huecosLibres($sede['id'], (int) $profesional['id'], $fecha, $minutos, $exceptoId);
             if ($horarios === []) {
                 continue;
             }
@@ -368,31 +519,128 @@ final class CitasController
         Respuesta::json(200, ['profesionales' => $disponibles]);
     }
 
-    private static function huecosLibres(int $sede, int $colaboradorId, string $fecha, int $minutos): array
+    public static function citasPublicas(Peticion $peticion): void
     {
-        $ocupados = Cita::ocupados($sede, $colaboradorId, $fecha . ' 00:00:00', $fecha . ' 23:59:59');
-        $horarios = [];
-        $apertura = strtotime($fecha . ' 08:00:00');
-        $cierre = strtotime($fecha . ' 20:00:00');
-        for ($inicio = $apertura; $inicio + ($minutos * 60) <= $cierre; $inicio += 1800) {
-            if ($inicio < time()) {
-                continue;
+        $sede = self::sedePublica();
+        $acceso = self::leerAccesoClientePublico($_GET['telefono'] ?? '', $_GET['correo'] ?? '');
+        $citas = Cita::listarPublicasCliente($sede['id'], $acceso['telefono'], $acceso['correo']);
+        Respuesta::json(200, ['citas' => $citas]);
+    }
+
+    public static function cancelarPublico(Peticion $peticion): void
+    {
+        $sede = self::sedePublica();
+        $id = self::id($peticion, 'Cita no encontrada');
+        $acceso = self::leerAccesoClientePublico($peticion->cuerpo['telefono'] ?? '', $peticion->cuerpo['correo'] ?? '');
+        $pdo = Conexion::obtener();
+        $pdo->beginTransaction();
+        try {
+            $cita = Cita::bloquearPublica($pdo, $sede['id'], $id);
+            if ($cita === null || !self::citaDelCliente($cita, $acceso)) {
+                $pdo->rollBack();
+                Respuesta::json(404, ['error' => 'Cita no encontrada']);
             }
-            $fin = $inicio + ($minutos * 60);
-            $libre = true;
-            foreach ($ocupados as $cita) {
-                $ocupadoInicio = strtotime($cita['inicio']);
-                $ocupadoFin = strtotime($cita['fin']);
-                if ($inicio < $ocupadoFin && $fin > $ocupadoInicio) {
-                    $libre = false;
-                    break;
-                }
+            if ($cita['estado'] !== 'pendiente' || strtotime($cita['inicio']) < time()) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Esa cita ya no se puede cancelar']);
             }
-            if ($libre) {
-                $horarios[] = date('H:i', $inicio);
+            Cita::cambiarEstado($pdo, $sede['id'], $id, 'cancelada');
+            Aviso::cancelarPendientes($pdo, $id);
+            $pdo->commit();
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
+            throw $e;
         }
-        return $horarios;
+        Respuesta::json(200, [
+            'ok' => true,
+            'cita' => [
+                'id' => $id,
+                'estado' => 'cancelada',
+                'inicio' => $cita['inicio'],
+                'cliente' => $cita['cliente_nombre'],
+                'profesional' => $cita['colaborador_nombre'],
+            ],
+        ]);
+    }
+
+    public static function reagendarPublico(Peticion $peticion): void
+    {
+        $sede = self::sedePublica();
+        $id = self::id($peticion, 'Cita no encontrada');
+        $acceso = self::leerAccesoClientePublico($peticion->cuerpo['telefono'] ?? '', $peticion->cuerpo['correo'] ?? '');
+        $inicio = self::fecha($peticion->cuerpo['inicio'] ?? null, 'Elige un horario');
+        $colaboradorId = $peticion->cuerpo['colaborador_id'] ?? null;
+        if (!is_numeric($colaboradorId) || (int) $colaboradorId < 1 || (int) $colaboradorId != $colaboradorId) {
+            Respuesta::json(422, ['error' => 'Elige un profesional']);
+        }
+        $pdo = Conexion::obtener();
+        $pdo->beginTransaction();
+        try {
+            $cita = Cita::bloquearPublica($pdo, $sede['id'], $id);
+            if ($cita === null || !self::citaDelCliente($cita, $acceso)) {
+                $pdo->rollBack();
+                Respuesta::json(404, ['error' => 'Cita no encontrada']);
+            }
+            if ($cita['estado'] !== 'pendiente' || strtotime($cita['inicio']) < time()) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Esa cita ya no se puede reagendar']);
+            }
+            $profesional = Cita::bloquearProfesional($pdo, $sede['id'], (int) $colaboradorId);
+            if ($profesional === null || !$profesional['activo']) {
+                $pdo->rollBack();
+                Respuesta::json(404, ['error' => 'Profesional no encontrado']);
+            }
+            $servicios = Cita::serviciosDeCita($pdo, $id);
+            if ($servicios === []) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'La cita no tiene servicios']);
+            }
+            $minutos = 0;
+            $nombres = [];
+            foreach ($servicios as $servicio) {
+                $minutos += $servicio['duracion_minutos'];
+                $nombres[] = $servicio['nombre'];
+            }
+            $finTs = strtotime($inicio) + ($minutos * 60);
+            if (!self::diaReservable(substr($inicio, 0, 10)) || !Horario::permitido($sede['id'], (int) $colaboradorId, $inicio, $minutos)) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Ese horario no está disponible']);
+            }
+            $fin = date('Y-m-d H:i:s', $finTs);
+            if (Cita::haySolape($pdo, $sede['id'], (int) $colaboradorId, $inicio, $fin, $id)) {
+                $pdo->rollBack();
+                Respuesta::json(422, ['error' => 'Ese profesional ya tiene una cita en ese horario']);
+            }
+            Cita::reagendar($pdo, $sede['id'], $id, (int) $colaboradorId, $inicio, $fin);
+            $aviso = strtotime($inicio) - 7200;
+            if ($aviso < time()) {
+                $aviso = time();
+            }
+            Cita::reprogramarAvisos($pdo, $id, date('Y-m-d H:i:s', $aviso));
+            $pdo->commit();
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+        Respuesta::json(200, [
+            'cita' => [
+                'id' => $id,
+                'inicio' => $inicio,
+                'fin' => $fin,
+                'estado' => 'pendiente',
+                'cliente' => $cita['cliente_nombre'],
+                'profesional' => $profesional['nombre'],
+                'servicios' => $nombres,
+                'servicio_ids' => array_map(static function (array $item): int {
+                    return $item['id'];
+                }, $servicios),
+                'colaborador_id' => (int) $colaboradorId,
+            ],
+        ]);
     }
 
     public static function reservarPublico(Peticion $peticion): void
@@ -432,7 +680,7 @@ final class CitasController
                 $elegidos[] = $servicio;
             }
             $finTs = strtotime($inicio) + ($minutos * 60);
-            if (!self::horarioPermitido($inicio, $minutos)) {
+            if (!self::diaReservable(substr($inicio, 0, 10)) || !Horario::permitido($sede['id'], (int) $colaboradorId, $inicio, $minutos)) {
                 $pdo->rollBack();
                 Respuesta::json(422, ['error' => 'Ese horario no está disponible']);
             }
@@ -447,7 +695,7 @@ final class CitasController
                 Cita::agregarServicio($pdo, $citaId, (int) $servicio['id'], number_format((float) $servicio['precio'], 2, '.', ''));
                 $nombres[] = $servicio['nombre'];
             }
-            $aviso = strtotime($inicio) - 3600;
+            $aviso = strtotime($inicio) - 7200;
             if ($aviso < time()) {
                 $aviso = time();
             }
@@ -462,6 +710,7 @@ final class CitasController
             }
             throw $e;
         }
+        Aviso::enviarConfirmacion($citaId);
         Respuesta::json(200, [
             'reserva' => [
                 'inicio' => $inicio,
@@ -492,7 +741,29 @@ final class CitasController
         if ($datos['telefono'] === null || mb_strlen($datos['telefono']) < 7) {
             Respuesta::json(422, ['error' => 'El teléfono es obligatorio']);
         }
+        if ($datos['correo'] === null) {
+            Respuesta::json(422, ['error' => 'El correo es obligatorio para confirmar la cita']);
+        }
         return $datos;
+    }
+
+    private static function leerAccesoClientePublico(mixed $telefono, mixed $correo): array
+    {
+        $tel = trim((string) $telefono);
+        $mail = strtolower(trim((string) $correo));
+        if ($tel === '' || mb_strlen($tel) < 7 || mb_strlen($tel) > 20) {
+            Respuesta::json(422, ['error' => 'Escribe el teléfono de la reserva']);
+        }
+        if ($mail === '' || !filter_var($mail, FILTER_VALIDATE_EMAIL) || mb_strlen($mail) > 160) {
+            Respuesta::json(422, ['error' => 'Escribe el correo de la reserva']);
+        }
+        return ['telefono' => $tel, 'correo' => $mail];
+    }
+
+    private static function citaDelCliente(array $cita, array $acceso): bool
+    {
+        $correo = strtolower(trim((string) ($cita['correo'] ?? '')));
+        return $cita['telefono'] === $acceso['telefono'] && $correo === $acceso['correo'];
     }
 
     private static function listaServicios($valor): array
@@ -533,25 +804,6 @@ final class CitasController
         $hoy = date('Y-m-d');
         $limite = date('Y-m-d', strtotime('+60 days'));
         return $fecha >= $hoy && $fecha <= $limite;
-    }
-
-    private static function horarioPermitido(string $inicio, int $minutos): bool
-    {
-        $marca = strtotime($inicio);
-        if ($marca === false || $marca < time()) {
-            return false;
-        }
-        $dia = date('Y-m-d', $marca);
-        if (!self::diaReservable($dia)) {
-            return false;
-        }
-        $apertura = strtotime($dia . ' 08:00:00');
-        $cierre = strtotime($dia . ' 20:00:00');
-        $fin = $marca + ($minutos * 60);
-        if ($marca < $apertura || $fin > $cierre) {
-            return false;
-        }
-        return ($marca - $apertura) % 1800 === 0;
     }
 
     private static function exigirAgenda(Peticion $peticion): int

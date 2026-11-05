@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
+import { Alert, Badge, Form, Modal, Spinner, Table } from 'react-bootstrap'
 import { eliminarRol, guardarRol, listarRoles } from '../../cliente/roles'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 
 const vacio = {
   id: null,
@@ -112,7 +113,7 @@ export default function PaginaRoles() {
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Roles</h1>
-        <Button onClick={abrirNuevo}>Nuevo rol</Button>
+        <BotonAccion icono="plus" titulo="Nuevo rol" variant="primary" onClick={abrirNuevo} />
       </div>
       <p className="text-secondary">
         Cada rol lleva los permisos que marques. Los de agenda, ficha o comisiones propias solo aplican si la persona está en Colaboradores.
@@ -146,14 +147,12 @@ export default function PaginaRoles() {
                 </td>
                 <td>{rol.permisos.map(tituloDe).join(', ')}</td>
                 <td className="text-end text-nowrap">
-                  <Button size="sm" variant="outline-primary" className="me-2" onClick={() => abrirEdicion(rol)}>
-                    Editar
-                  </Button>
-                  {!rol.sistema && (
-                    <Button size="sm" variant="outline-primary" onClick={() => borrar(rol)}>
-                      Eliminar
-                    </Button>
-                  )}
+                  <GrupoAcciones>
+                    <BotonAccion icono="pencil" titulo="Editar" onClick={() => abrirEdicion(rol)} />
+                    {!rol.sistema && (
+                      <BotonAccion icono="trash" titulo="Eliminar" onClick={() => borrar(rol)} />
+                    )}
+                  </GrupoAcciones>
                 </td>
               </tr>
             ))}
@@ -198,12 +197,8 @@ export default function PaginaRoles() {
             ))}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setFormulario(null)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
+            <BotonAccion icono="x" titulo="Cancelar" onClick={() => setFormulario(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>

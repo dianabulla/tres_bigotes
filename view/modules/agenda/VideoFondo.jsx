@@ -1,11 +1,25 @@
 import { useEffect, useRef } from 'react'
 
+function conexionLimitada() {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+  const red = navigator.connection || navigator.mozConnection || navigator.webkitConnection
+  if (!red) {
+    return false
+  }
+  if (red.saveData) {
+    return true
+  }
+  return red.effectiveType === 'slow-2g' || red.effectiveType === '2g'
+}
+
 export default function VideoFondo({ src, poster }) {
   const video = useRef(null)
 
   useEffect(() => {
     const el = video.current
-    if (!el) {
+    if (!el || conexionLimitada()) {
       return undefined
     }
 
@@ -28,9 +42,9 @@ export default function VideoFondo({ src, poster }) {
 
     const programar = () => {
       if (typeof window.requestIdleCallback === 'function') {
-        idleId = window.requestIdleCallback(activar, { timeout: 1200 })
+        idleId = window.requestIdleCallback(activar, { timeout: 1800 })
       } else {
-        timeoutId = window.setTimeout(activar, 200)
+        timeoutId = window.setTimeout(activar, 400)
       }
     }
 

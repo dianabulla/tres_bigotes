@@ -12,6 +12,13 @@ export function leerSesion() {
   return solicitar('/api/sesion')
 }
 
+export function elegirSedeTrabajo(establecimientoId) {
+  return solicitar('/api/sesion/sede', {
+    metodo: 'PUT',
+    cuerpo: { establecimiento_id: establecimientoId },
+  })
+}
+
 export function cerrarSesion() {
   return solicitar('/api/sesion', { metodo: 'DELETE' })
 }

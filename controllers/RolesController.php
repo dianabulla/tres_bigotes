@@ -24,7 +24,7 @@ final class RolesController
 
     public static function listar(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'roles', 'No tienes permiso para administrar los roles');
+        Acceso::exigirPermiso($peticion, 'roles', 'No tienes permiso para administrar los roles');
         Respuesta::json(200, [
             'roles' => Rol::listar(),
             'permisos' => Permiso::catalogo(),
@@ -33,7 +33,7 @@ final class RolesController
 
     public static function crear(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'roles', 'No tienes permiso para administrar los roles');
+        Acceso::exigirPermiso($peticion, 'roles', 'No tienes permiso para administrar los roles');
         $nombre = self::nombre($peticion->cuerpo);
         $permisos = self::permisos($peticion->cuerpo, []);
         $pdo = Conexion::obtener();
@@ -53,7 +53,7 @@ final class RolesController
 
     public static function actualizar(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'roles', 'No tienes permiso para administrar los roles');
+        Acceso::exigirPermiso($peticion, 'roles', 'No tienes permiso para administrar los roles');
         $id = self::id($peticion);
         $actual = Rol::buscar($id);
         if ($actual === null) {
@@ -81,7 +81,7 @@ final class RolesController
 
     public static function eliminar(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'roles', 'No tienes permiso para administrar los roles');
+        Acceso::exigirPermiso($peticion, 'roles', 'No tienes permiso para administrar los roles');
         $id = self::id($peticion);
         $actual = Rol::buscar($id);
         if ($actual === null) {

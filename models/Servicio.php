@@ -11,13 +11,13 @@ final class Servicio
 {
     public static function listar(int $sede, bool $soloActivos): array
     {
-        $sql = 'SELECT id, nombre, categoria, descripcion, duracion_minutos, precio, activo
+        $sql = 'SELECT id, nombre, categoria, orden, descripcion, duracion_minutos, precio, activo
                 FROM servicio
                 WHERE establecimiento_id = :sede';
         if ($soloActivos) {
             $sql .= ' AND activo = 1';
         }
-        $sql .= ' ORDER BY nombre, id';
+        $sql .= ' ORDER BY orden, nombre, id';
         $consulta = Conexion::obtener()->prepare($sql);
         $consulta->execute(['sede' => $sede]);
         $filas = [];
@@ -159,6 +159,7 @@ final class Servicio
             'id' => (int) $fila['id'],
             'nombre' => $fila['nombre'],
             'categoria' => $fila['categoria'],
+            'orden' => (int) ($fila['orden'] ?? 100),
             'descripcion' => $fila['descripcion'] ?? '',
             'duracion_minutos' => (int) $fila['duracion_minutos'],
             'precio' => $fila['precio'],

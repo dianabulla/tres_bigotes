@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
 import { listarProductos } from '../../cliente/inventario'
 import { guardarServicio, listarServicios } from '../../cliente/servicios'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 
 const vacio = {
   id: null,
@@ -120,7 +121,7 @@ export default function PaginaServicios() {
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Servicios</h1>
-        <Button onClick={abrirNuevo}>Nuevo servicio</Button>
+        <BotonAccion icono="plus" titulo="Nuevo servicio" variant="primary" onClick={abrirNuevo} />
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {aviso && <Alert variant="light" className="border border-dark text-black" onClose={() => setAviso('')} dismissible>{aviso}</Alert>}
@@ -162,19 +163,15 @@ export default function PaginaServicios() {
                     {servicio.activo ? 'Activo' : 'De baja'}
                   </Badge>
                 </td>
-                <td className="text-end text-nowrap">
-                  <Button size="sm" variant="outline-primary" className="me-2" onClick={() => abrirEdicion(servicio)}>
-                    Editar
-                  </Button>
-                  {servicio.activo ? (
-                    <Button size="sm" variant="outline-primary" onClick={() => cambiarActivo(servicio, false)}>
-                      Dar de baja
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="primary" onClick={() => cambiarActivo(servicio, true)}>
-                      Activar
-                    </Button>
-                  )}
+                <td className="text-end">
+                  <GrupoAcciones>
+                    <BotonAccion icono="pencil" titulo="Editar" onClick={() => abrirEdicion(servicio)} />
+                    {servicio.activo ? (
+                      <BotonAccion icono="trash" titulo="Eliminar" onClick={() => cambiarActivo(servicio, false)} />
+                    ) : (
+                      <BotonAccion icono="check" titulo="Activar" variant="primary" onClick={() => cambiarActivo(servicio, true)} />
+                    )}
+                  </GrupoAcciones>
                 </td>
               </tr>
             ))}
@@ -256,14 +253,11 @@ export default function PaginaServicios() {
             )}
             <div className="d-flex justify-content-between align-items-center mb-2">
               <Form.Label className="mb-0">Insumos por cita</Form.Label>
-              <Button
-                size="sm"
-                variant="outline-primary"
-                type="button"
+              <BotonAccion
+                icono="plus"
+                titulo="Agregar insumo"
                 onClick={() => cambiar('insumos', [...(formulario?.insumos ?? []), { producto_id: '', cantidad: '1' }])}
-              >
-                Agregar
-              </Button>
+              />
             </div>
             {(formulario?.insumos ?? []).length === 0 ? (
               <p className="text-secondary small mb-0">Este servicio no descuenta inventario al completarse.</p>
@@ -292,13 +286,11 @@ export default function PaginaServicios() {
                   />
                 </Col>
                 <Col xs="auto">
-                  <Button
-                    variant="outline-secondary"
-                    type="button"
+                  <BotonAccion
+                    icono="trash"
+                    titulo="Quitar insumo"
                     onClick={() => cambiar('insumos', formulario.insumos.filter((_, posicion) => posicion !== indice))}
-                  >
-                    Quitar
-                  </Button>
+                  />
                 </Col>
               </Row>
             ))}
@@ -307,12 +299,8 @@ export default function PaginaServicios() {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setFormulario(null)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
+            <BotonAccion icono="x" titulo="Cancelar" onClick={() => setFormulario(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>

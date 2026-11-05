@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
+import { Alert, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
 import { anularLiquidacion, eliminarRegla, guardarRegla, liquidarComision, verComisiones, verLiquidacion } from '../../cliente/comisiones'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 import { useSesion } from '../../components/Sesion'
 import { tienePermiso } from '../registro'
 
@@ -112,7 +113,9 @@ export default function PaginaComisiones() {
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Comisiones</h1>
-        {esAdmin && <Button onClick={() => { setErrorRegla(''); setRegla({ ...reglaVacia }) }}>Nueva regla</Button>}
+        {esAdmin && (
+          <BotonAccion icono="plus" titulo="Nueva regla" variant="primary" onClick={() => { setErrorRegla(''); setRegla({ ...reglaVacia }) }} />
+        )}
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {aviso && <Alert variant="light" className="border border-dark text-black" onClose={() => setAviso('')} dismissible>{aviso}</Alert>}
@@ -143,9 +146,11 @@ export default function PaginaComisiones() {
                         <td>{item.servicio}</td>
                         <td>{item.porcentaje}%</td>
                         <td>{item.umbral_cantidad ? `Más de ${item.umbral_cantidad} por ${item.periodo === 'dia' ? 'día' : 'semana'}` : 'Base'}</td>
-                        <td className="text-end text-nowrap">
-                          <Button size="sm" variant="outline-primary" className="me-2" onClick={() => setRegla({ ...item, servicio_id: item.servicio_id ?? '', umbral_cantidad: item.umbral_cantidad ?? '', periodo: item.periodo ?? '' })}>Editar</Button>
-                          <Button size="sm" variant="outline-primary" onClick={() => quitarRegla(item.id)}>Quitar</Button>
+                        <td className="text-end">
+                          <GrupoAcciones>
+                            <BotonAccion icono="pencil" titulo="Editar" onClick={() => setRegla({ ...item, servicio_id: item.servicio_id ?? '', umbral_cantidad: item.umbral_cantidad ?? '', periodo: item.periodo ?? '' })} />
+                            <BotonAccion icono="trash" titulo="Quitar" onClick={() => quitarRegla(item.id)} />
+                          </GrupoAcciones>
                         </td>
                       </tr>
                     ))}
@@ -172,7 +177,7 @@ export default function PaginaComisiones() {
                     <Form.Control id="hasta" type="date" required value={hasta} onChange={(evento) => setHasta(evento.target.value)} />
                   </Col>
                   <Col md={2}>
-                    <Button type="submit" className="w-100" disabled={guardando}>{guardando ? 'Calculando…' : 'Liquidar'}</Button>
+                    <BotonAccion icono="cash" titulo={guardando ? 'Calculando…' : 'Liquidar'} type="submit" variant="primary" className="w-100" disabled={guardando} />
                   </Col>
                 </Row>
               </Form>
@@ -200,7 +205,9 @@ export default function PaginaComisiones() {
                     <td>{String(item.hasta).slice(0, 10)}</td>
                     <td>{item.total}</td>
                     <td className="text-end">
-                      <Button size="sm" variant="outline-primary" onClick={() => abrir(item.id)}>Ver</Button>
+                      <GrupoAcciones>
+                        <BotonAccion icono="eye" titulo="Ver liquidación" onClick={() => abrir(item.id)} />
+                      </GrupoAcciones>
                     </td>
                   </tr>
                 ))}
@@ -250,8 +257,8 @@ export default function PaginaComisiones() {
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setRegla(null)}>Cancelar</Button>
-            <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
+            <BotonAccion icono="x" titulo="Cancelar" onClick={() => setRegla(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>
@@ -288,8 +295,8 @@ export default function PaginaComisiones() {
           )}
         </Modal.Body>
         <Modal.Footer>
-          {esAdmin && <Button variant="outline-primary" disabled={guardando} onClick={() => anular(detalle.id)}>Anular</Button>}
-          <Button variant="secondary" onClick={() => setDetalle(null)}>Cerrar</Button>
+          {esAdmin && <BotonAccion icono="trash" titulo="Anular" disabled={guardando} onClick={() => anular(detalle.id)} />}
+          <BotonAccion icono="x" titulo="Cerrar" onClick={() => setDetalle(null)} />
         </Modal.Footer>
       </Modal>
     </>

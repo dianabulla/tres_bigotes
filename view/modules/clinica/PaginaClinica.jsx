@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Form, Spinner } from 'react-bootstrap'
 import { buscarClinica, guardarFicha, guardarNota, verClinica } from '../../cliente/clinica'
+import BotonAccion from '../../components/BotonAccion'
 import { useSesion } from '../../components/Sesion'
 import { tienePermiso } from '../registro'
 
@@ -124,7 +125,7 @@ export default function PaginaClinica() {
           onChange={(evento) => setBusqueda(evento.target.value)}
           style={{ maxWidth: '20rem' }}
         />
-        <Button type="submit" disabled={guardando}>Buscar</Button>
+        <BotonAccion icono="search" titulo="Buscar" type="submit" variant="primary" disabled={guardando} />
       </Form>
       {cargando ? (
         <Spinner animation="border" role="status">
@@ -157,7 +158,9 @@ export default function PaginaClinica() {
               <Form.Label>Fórmulas</Form.Label>
               <Form.Control as="textarea" rows={2} maxLength={2000} value={ficha.formulas} disabled={!puedeEditar} onChange={(evento) => setFicha((actual) => ({ ...actual, formulas: evento.target.value }))} />
             </Form.Group>
-            {puedeEditar && <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar ficha'}</Button>}
+            {puedeEditar && (
+              <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar ficha'} type="submit" variant="primary" disabled={guardando} />
+            )}
           </Form>
           {anota && (
             <Form onSubmit={anotar} className="mb-4">
@@ -178,7 +181,7 @@ export default function PaginaClinica() {
                     <Form.Label>Observación</Form.Label>
                     <Form.Control as="textarea" rows={3} required maxLength={2000} value={observacion} onChange={(evento) => setObservacion(evento.target.value)} />
                   </Form.Group>
-                  <Button type="submit" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar nota'}</Button>
+                  <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar nota'} type="submit" variant="primary" disabled={guardando} />
                 </>
               )}
             </Form>

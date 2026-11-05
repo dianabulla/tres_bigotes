@@ -36,6 +36,12 @@ export const modulos = [
     permisos: ['agenda', 'agenda.propia'],
   },
   {
+    id: 'horarios',
+    titulo: 'Horarios',
+    ruta: '/gestion/horarios',
+    permisos: ['horarios'],
+  },
+  {
     id: 'clinica',
     titulo: 'Ficha clínica',
     ruta: '/gestion/clinica',

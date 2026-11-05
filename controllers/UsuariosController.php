@@ -9,6 +9,7 @@ use TresBigotes\Api\Peticion;
 use TresBigotes\Api\Respuesta;
 use TresBigotes\Api\Router;
 use TresBigotes\Config\Conexion;
+use TresBigotes\Models\Establecimiento;
 use TresBigotes\Models\Permiso;
 use TresBigotes\Models\Rol;
 use TresBigotes\Models\Usuario;
@@ -24,21 +25,28 @@ final class UsuariosController
 
     public static function listar(Peticion $peticion): void
     {
-        $sede = self::exigirAdministrador($peticion);
+        Acceso::exigirPermiso($peticion, 'usuarios', 'No tienes permiso para administrar los usuarios');
+        $esSuper = Acceso::esSuper($peticion);
+        $usuarios = $esSuper
+            ? Usuario::listarTodos()
+            : Usuario::listarPorSede((int) $peticion->usuario['establecimiento_id']);
         Respuesta::json(200, [
-            'usuarios' => Usuario::listarPorSede($sede),
-            'roles' => Rol::opciones(),
+            'usuarios' => $usuarios,
+            'roles' => self::rolesAsignables($esSuper),
+            'sedes' => $esSuper ? Establecimiento::listar() : [],
+            'alcance' => Acceso::alcance($peticion)['tipo'],
         ]);
     }
 
     public static function crear(Peticion $peticion): void
     {
-        $sede = self::exigirAdministrador($peticion);
-        $datos = self::leer($peticion->cuerpo, true);
+        Acceso::exigirPermiso($peticion, 'usuarios', 'No tienes permiso para administrar los usuarios');
+        $esSuper = Acceso::esSuper($peticion);
+        $datos = self::leer($peticion, true, $esSuper);
         $pdo = Conexion::obtener();
         $pdo->beginTransaction();
         try {
-            $id = Usuario::crearConRol($pdo, $sede, $datos['rol'], $datos);
+            $id = Usuario::crearConRol($pdo, $datos['establecimiento_id'], $datos['rol'], $datos);
             if ($id === 0) {
                 $pdo->rollBack();
                 Respuesta::json(500, ['error' => 'Error interno']);
@@ -50,31 +58,45 @@ final class UsuariosController
             }
             self::traducirDuplicado($e);
         }
-        Respuesta::json(200, ['usuario' => Usuario::buscarEnSede($sede, $id)]);
+        Respuesta::json(200, ['usuario' => Usuario::buscarPorId($id)]);
     }
 
     public static function actualizar(Peticion $peticion): void
     {
-        $sede = self::exigirAdministrador($peticion);
+        Acceso::exigirPermiso($peticion, 'usuarios', 'No tienes permiso para administrar los usuarios');
+        $esSuper = Acceso::esSuper($peticion);
         $id = self::id($peticion);
-        $actual = Usuario::buscarEnSede($sede, $id);
+        $actual = $esSuper
+            ? Usuario::buscarPorId($id)
+            : Usuario::buscarEnSede((int) $peticion->usuario['establecimiento_id'], $id);
         if ($actual === null) {
             Respuesta::json(404, ['error' => 'Usuario no encontrado']);
         }
-        $datos = self::leer($peticion->cuerpo, false);
+        $datos = self::leer($peticion, false, $esSuper, $actual);
         if ($id === (int) $peticion->usuario['id'] && (!$datos['activo'] || $datos['rol'] !== $actual['rol'])) {
             Respuesta::json(422, ['error' => 'No puedes cambiar tu propio rol ni darte de baja']);
         }
-        $pdo = Conexion::obtener();
-        $teniaUsuarios = Permiso::rolTiene($pdo, $actual['rol'], 'usuarios');
-        $conservaUsuarios = $datos['activo'] && Permiso::rolTiene($pdo, $datos['rol'], 'usuarios');
-        if ($teniaUsuarios && !$conservaUsuarios && Usuario::otrosConPermiso($pdo, $sede, $id, 'usuarios') < 1) {
-            Respuesta::json(422, ['error' => 'La sede debe conservar un usuario que pueda administrar usuarios']);
+        if ($id === (int) $peticion->usuario['id'] && Acceso::esSuper($peticion)
+            && $datos['establecimiento_id'] !== null) {
+            Respuesta::json(422, ['error' => 'El super administrador no lleva sede asignada']);
         }
         $pdo = Conexion::obtener();
+        $sedeOrigen = $actual['establecimiento_id'];
+        $teniaUsuarios = Permiso::rolTiene($pdo, $actual['rol'], 'usuarios');
+        $conservaUsuarios = $datos['activo'] && Permiso::rolTiene($pdo, $datos['rol'], 'usuarios')
+            && $datos['establecimiento_id'] === $sedeOrigen;
+        if ($teniaUsuarios && !$conservaUsuarios && $sedeOrigen !== null
+            && Usuario::otrosConPermiso($pdo, $sedeOrigen, $id, 'usuarios') < 1) {
+            Respuesta::json(422, ['error' => 'La sede debe conservar un usuario que pueda administrar usuarios']);
+        }
+        if ($teniaUsuarios && !$conservaUsuarios && $sedeOrigen === null
+            && Usuario::otrosConPermiso($pdo, null, $id, 'usuarios') < 1) {
+            Respuesta::json(422, ['error' => 'Debe quedar al menos un super administrador activo']);
+        }
         $pdo->beginTransaction();
         try {
-            Usuario::actualizarCuenta($pdo, $sede, $id, $datos);
+            $filtro = $esSuper ? null : (int) $peticion->usuario['establecimiento_id'];
+            Usuario::actualizarCuenta($pdo, $id, $datos, $filtro);
             $pdo->commit();
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
@@ -82,12 +104,19 @@ final class UsuariosController
             }
             self::traducirDuplicado($e);
         }
-        Respuesta::json(200, ['usuario' => Usuario::buscarEnSede($sede, $id)]);
+        Respuesta::json(200, ['usuario' => Usuario::buscarPorId($id)]);
     }
 
-    private static function exigirAdministrador(Peticion $peticion): int
+    private static function rolesAsignables(bool $esSuper): array
     {
-        return Acceso::exigir($peticion, 'usuarios', 'No tienes permiso para administrar los usuarios');
+        $opciones = [];
+        foreach (Rol::opciones() as $rol) {
+            if (!$esSuper && $rol['codigo'] === 'superadministrador') {
+                continue;
+            }
+            $opciones[] = $rol;
+        }
+        return $opciones;
     }
 
     private static function id(Peticion $peticion): int
@@ -99,8 +128,9 @@ final class UsuariosController
         return (int) $id;
     }
 
-    private static function leer(array $cuerpo, bool $esAlta): array
+    private static function leer(Peticion $peticion, bool $esAlta, bool $esSuper, ?array $actual = null): array
     {
+        $cuerpo = $peticion->cuerpo;
         $nombre = trim((string) ($cuerpo['nombre'] ?? ''));
         if ($nombre === '' || mb_strlen($nombre) > 120) {
             Respuesta::json(422, ['error' => 'El nombre es obligatorio']);
@@ -120,6 +150,10 @@ final class UsuariosController
         if (Rol::buscarPorCodigo($rol) === null) {
             Respuesta::json(422, ['error' => 'Elige un rol']);
         }
+        if ($rol === 'superadministrador' && !$esSuper) {
+            Respuesta::json(403, ['error' => 'Solo el super administrador puede asignar ese rol']);
+        }
+        $sede = self::resolverSede($peticion, $cuerpo, $esSuper, $rol, $actual);
         $activo = true;
         if (!$esAlta) {
             $activo = self::booleano($cuerpo['activo'] ?? null);
@@ -133,7 +167,40 @@ final class UsuariosController
             'clave' => $clave,
             'rol' => $rol,
             'activo' => $activo,
+            'establecimiento_id' => $sede,
         ];
+    }
+
+    private static function resolverSede(
+        Peticion $peticion,
+        array $cuerpo,
+        bool $esSuper,
+        string $rol,
+        ?array $actual
+    ): ?int {
+        if ($rol === 'superadministrador') {
+            return null;
+        }
+        if (!$esSuper) {
+            $sede = (int) ($peticion->usuario['establecimiento_id'] ?? 0);
+            if ($sede < 1) {
+                Respuesta::json(403, ['error' => 'Tu cuenta no tiene sede asignada']);
+            }
+            return $sede;
+        }
+        $raw = $cuerpo['establecimiento_id'] ?? ($actual['establecimiento_id'] ?? null);
+        if ($raw === null || $raw === '') {
+            Respuesta::json(422, ['error' => 'Asigna el usuario a una sede']);
+        }
+        if (!is_numeric($raw) || (int) $raw < 1) {
+            Respuesta::json(422, ['error' => 'La sede no es válida']);
+        }
+        $sedeId = (int) $raw;
+        $sede = Establecimiento::buscar($sedeId);
+        if ($sede === null || !$sede['activo']) {
+            Respuesta::json(422, ['error' => 'Esa sede no está disponible']);
+        }
+        return $sedeId;
     }
 
     private static function booleano($valor): ?bool

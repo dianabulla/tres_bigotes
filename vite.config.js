@@ -6,9 +6,25 @@ export default defineConfig({
   envDir: '..',
   publicDir: 'public',
   base: '/tres_bigotes/',
+  css: {
+    preprocessorOptions: {
+      scss: {
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'if-function', 'legacy-js-api'],
+      },
+    },
+  },
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['react-bootstrap'],
+        },
+      },
+    },
   },
   plugins: [react()],
 })

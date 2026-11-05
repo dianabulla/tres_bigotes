@@ -8,5 +8,6 @@ npm-debug.log*
 .env
 config/.env
 config/.env.produccion
+deploy/.ftp-cred
 subir/
 3bigotes-para-subir.zip

@@ -16,6 +16,10 @@ export function crearCita(datos) {
   return solicitar('/api/citas', { metodo: 'POST', cuerpo: datos })
 }
 
+export function actualizarCita(id, datos) {
+  return solicitar(`/api/citas/${id}`, { metodo: 'PUT', cuerpo: datos })
+}
+
 export function cambiarEstadoCita(id, estado) {
   return solicitar(`/api/citas/${id}/estado`, { metodo: 'PUT', cuerpo: { estado } })
 }

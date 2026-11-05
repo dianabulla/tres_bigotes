@@ -2,13 +2,14 @@
 
 ## Sedes y cuentas
 
-- Crear una sede guarda el establecimiento y su primer administrador en la misma operación. Si el correo ya existe, no queda la sede.
-- El catálogo de sedes lo ve cualquier administrador. La agenda, la caja y los clientes siguen filtrados por la sede de la sesión.
-- No se da de baja la sede con la que se entró. Una sede inactiva no abre sesión.
-- En Usuarios se asigna cualquier rol existente. El rol `colaborador` también puede nacer en Colaboradores.
-- Un rol nuevo guarda nombre y permisos en la misma operación. Hace falta al menos un permiso. El administrador de sistema conserva sedes, usuarios y roles. Un rol de sistema no se borra. Un rol con usuarios asignados tampoco.
+- Crear una sede guarda el establecimiento y su primer administrador en la misma operación. Si el correo ya existe, no queda la sede. Solo quien tiene permiso `sedes` (el `superadministrador`) lo hace.
+- Alcance: `superadministrador` → `sistema` (`establecimiento_id` nulo); cualquier otro rol → `sede` (sede obligatoria). `Acceso` resuelve el alcance en cada petición.
+- El catálogo de sedes lo ve el super. Agenda, caja y clientes filtran por la sede de la cuenta o, si es super, por `sesion.establecimiento_activo_id` (`PUT /api/sesion/sede`).
+- No se da de baja la sede de trabajo actual. Una sede inactiva no abre sesión a sus usuarios de sede.
+- En Usuarios el super envía `establecimiento_id` al crear o editar (salvo otro super). El administrador de sede ignora ese campo y usa siempre la suya. Solo el super puede asignar el rol `superadministrador`.
+- Un rol nuevo guarda nombre y permisos en la misma operación. Hace falta al menos un permiso. El super conserva sedes, usuarios y roles; el administrador conserva usuarios y roles. Un rol de sistema no se borra. Un rol con usuarios asignados tampoco.
 - Quien edita su propio rol no puede quitarse el permiso de administrar roles.
-- Quien está dentro no cambia su propio rol ni se da de baja. La sede conserva al menos un administrador activo.
+- Quien está dentro no cambia su propio rol ni se da de baja. La sede conserva al menos un usuario activo con permiso `usuarios`.
 - La clave nueva, si se envía, tiene al menos 8 caracteres. Un correo repetido responde `422`.
 
 ## Citas
@@ -18,8 +19,10 @@
 - Solape: el mismo colaborador no tiene dos citas activas (`pendiente` o `en_proceso`) que se crucen.
 - Transiciones: `pendiente` → `en_proceso` | `cancelada`; `en_proceso` → `completada` | `cancelada`. `completada` y `cancelada` no vuelven atrás.
 - Al pasar a `completada`, cada servicio descuenta sus insumos. Si dos servicios de la cita usan el mismo insumo, las cantidades se suman y queda una sola salida. Si el stock no alcanza, la cita no cambia de estado. El alta de la visita clínica la confirma el colaborador; no se inventan notas.
-- La reserva pública no pide sesión. El orden es nombre, teléfono y correo, después el servicio, y solo entonces los profesionales con un hueco ese día. El teléfono es la clave de la ficha: si ya existe en la sede, se reutiliza y se actualizan nombre y correo. La categoría del servicio es obligatoria.
-- Los horarios públicos van de 08:00 a 20:00, cada 30 minutos, y el servicio debe terminar antes del cierre. Solo se ofrecen desde ahora y hasta 60 días. El precio y el fin se calculan en el servidor.
+- La reserva pública no pide sesión. En la interfaz el orden es servicio, barbero, día y horas libres de ese profesional, y al final nombre, teléfono y correo. Nombre, teléfono y correo son obligatorios al confirmar. El teléfono es la clave de la ficha: si ya existe en la sede, se reutiliza y se actualizan nombre y correo. La categoría del servicio es obligatoria.
+- El cliente consulta sus citas pendientes futuras con teléfono y correo. Solo puede cancelar o reagendar si la cita sigue `pendiente` y aún no empezó. Reagendar mantiene los servicios, cambia profesional y horario, valida solape (excepto la propia cita) y reprograma avisos pendientes.
+- Los huecos públicos salen del `horario_trabajo` de la sede (o del profesional si tiene tramos propios), cada 30 minutos, y el servicio debe terminar dentro del tramo. Los `bloqueo_agenda` (recurrentes o por fecha; sede o profesional) no se ofrecen. Solo se ofrecen desde ahora y hasta 60 días. El precio y el fin se calculan en el servidor.
+- Gestionar horario y bloqueos exige permiso `horarios`. Una sede nueva nace con lunes–sábado 08:00–20:00; el domingo cerrado. Un día sin tramos queda cerrado.
 
 ## Ficha
 
@@ -29,7 +32,18 @@
 
 ## Recordatorios
 
-Al reservar se guardan dos avisos, uno para el cliente y otro para el colaborador, programados una hora antes del inicio. Si falta menos de una hora, quedan para el momento de la reserva. No hay canal externo todavía: el aviso queda `pendiente` y la reserva no se bloquea.
+El recordatorio WhatsApp desde Agenda es solo interfaz: abre `wa.me` con texto listo; no hay endpoint ni envío automático por WhatsApp.
+
+Al reservar (pública o interna) se envía de inmediato la confirmación por correo al cliente y, si el colaborador tiene acceso, también a él. Remitente: `atencion@3bigotesbarberie.com` (SMTP Hostinger vía `MAIL_*` en `.env`). Un fallo de correo no bloquea la reserva.
+
+Además se guardan dos avisos en `aviso_cita` (cliente y colaborador), programados dos horas antes del inicio. Si falta menos de dos horas, quedan para el momento de la reserva. En producción el cron de hPanel ejecuta `scripts/enviar-avisos.php` cada pocos minutos; también sirve `GET|POST /api/avisos/enviar` con `MAIL_CRON_CLAVE`. Lee los `pendiente` vencidos y envía el recordatorio. Sin correo del destinatario o con cita ya no pendiente, el aviso pasa a `fallido` (cuenta como omitido). Al cancelar se borran los avisos pendientes.
+
+## Reseñas
+
+- El administrador puede publicar una reseña directa en la carta (`origen = admin`, `publicada = 1`).
+- El cliente envía reseña pública con nombre, correo, texto y nota 1–5; queda `origen = cliente` y `publicada = 0` hasta que el administrador la apruebe.
+- La carta del inicio solo lista reseñas publicadas.
+- Falta: encuesta de satisfacción por correo tras una cita completada (reutilizar el correo de la reseña o del cliente).
 
 ## Comisiones
 
@@ -57,8 +71,11 @@ Los productos de venta no generan comisión.
 
 - Una sede tiene como máximo un turno `abierto`.
 - Abrir exige `saldo_inicial >= 0` y usuario `recepcion` o `administrador`.
-- Los medios de una venta son `nequi`, `daviplata` y `qr`. No hay tarjeta, efectivo ni Bancolombia.
+- Los medios de una venta son `efectivo` y `digital`. No hay Nequi, QR, tarjeta, Daviplata ni Bancolombia como medios separados.
 - Cada venta exige turno abierto y al menos un pago. La suma de pagos iguala el total de líneas. El total se calcula en el servidor con precios vigentes.
-- Una cita `completada` se cobra una sola vez. Cada servicio usa `precio_aplicado`. Puede ir en la misma venta que productos. Una cita pendiente no se cobra.
+- Una cita `completada` se cobra una sola vez. Se pueden marcar solo algunos de sus servicios; cada uno usa `precio_aplicado`. Si no se envía la lista, van todos. Puede ir en la misma venta que productos. Una cita pendiente no se cobra.
+- Sin cita: el cuerpo lleva `servicios` (ids del catálogo) y `colaborador_id` activo. El precio de cada servicio es el vigente en MySQL. Puede ir con productos.
+- `monto_sistema` por medio = pagos del turno ± `movimiento_caja`. En `efectivo` también suma `saldo_inicial`.
+- Solo el rol `administrador` crea `movimiento_caja` (`ingreso` o `egreso`) con motivo. Recepción no. El movimiento no se borra ni se edita.
 - Cerrar guarda, por cada medio, `monto_sistema`, `monto_reportado` y `diferencia` (`reportado - sistema`). El turno pasa a `cerrado` y no acepta más ventas.
-- Un cierre no se edita. Una corrección es un movimiento nuevo autorizado por `administrador`, con motivo.
+- Un cierre no se edita.

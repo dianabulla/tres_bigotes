@@ -6,11 +6,13 @@ use TresBigotes\Api\Peticion;
 use TresBigotes\Api\Respuesta;
 use TresBigotes\Api\Router;
 use TresBigotes\Config\Conexion;
+use TresBigotes\Controllers\AvisosController;
 use TresBigotes\Controllers\CajaController;
 use TresBigotes\Controllers\CitasController;
 use TresBigotes\Controllers\ClinicaController;
 use TresBigotes\Controllers\ColaboradoresController;
 use TresBigotes\Controllers\ComisionesController;
+use TresBigotes\Controllers\HorariosController;
 use TresBigotes\Controllers\InventarioController;
 use TresBigotes\Controllers\RolesController;
 use TresBigotes\Controllers\SedesController;
@@ -35,12 +37,14 @@ function registrarRutas(Router $router): void
     }, true);
 
     SesionController::registrar($router);
+    AvisosController::registrar($router);
     CitasController::registrar($router);
     ClinicaController::registrar($router);
     ColaboradoresController::registrar($router);
     ComisionesController::registrar($router);
     InventarioController::registrar($router);
     CajaController::registrar($router);
+    HorariosController::registrar($router);
     SedesController::registrar($router);
     UsuariosController::registrar($router);
     RolesController::registrar($router);

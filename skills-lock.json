@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "audit-hosting": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/audit-hosting/SKILL.md",
+      "computedHash": "9daf64da5b34b4162daf8cd61d7f81c2ba202457c58cf5763fde040832b4d942"
+    },
+    "connect-domain": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/connect-domain/SKILL.md",
+      "computedHash": "f10b116f650396d6d67589b369871eeee6eb56d1a309be4f0cf18e99f0118416"
+    },
+    "deploy-to-hosting": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/deploy-to-hosting/SKILL.md",
+      "computedHash": "7366c51ed49ce051478f72a9e1e842c709f6f670ff35c9b372fcb5504dfc971a"
+    },
+    "hostinger-headless": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/headless/SKILL.md",
+      "computedHash": "e0e12cbeb288eee64efbf5c803d3593df42940de9ff6c2e0ab068eb3382c3864"
+    },
+    "maintain-wordpress": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/maintain-wordpress/SKILL.md",
+      "computedHash": "244c5afeb10b3b99f3fb103c3ec44868563b969e6b033f14adeb2efeee1226fc"
+    },
+    "migrate-to-hosting": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/migrate-to-hosting/SKILL.md",
+      "computedHash": "4f89beb791bd5a99d105f6f494681741b91fef683e7fbf2284626862a33e6dc3"
+    },
+    "troubleshoot-website": {
+      "source": "hostinger/api-mcp-server",
+      "sourceType": "github",
+      "skillPath": "skills/troubleshoot-website/SKILL.md",
+      "computedHash": "0d75b13da773ab0cb15e22708f183f26aa81001b2b91c402cef84a0a42b888ba"
+    }
+  }
+}

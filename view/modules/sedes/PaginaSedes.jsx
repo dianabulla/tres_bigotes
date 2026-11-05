@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Form, Modal, Spinner, Table } from 'react-bootstrap'
+import { Alert, Badge, Form, Modal, Spinner, Table } from 'react-bootstrap'
 import { guardarSede, listarSedes } from '../../cliente/sedes'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 
 const vacio = {
   id: null,
@@ -96,11 +97,11 @@ export default function PaginaSedes() {
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Sedes</h1>
-        <Button onClick={abrirNuevo}>Nueva sede</Button>
+        <BotonAccion icono="plus" titulo="Nueva sede" variant="primary" onClick={abrirNuevo} />
       </div>
       <p className="text-secondary">
-        Cada sede tiene su agenda, sus clientes y su caja. La carta pública usa la sede activa más antigua.
-        Para trabajar en una sede nueva, entra con el administrador que se crea aquí.
+        Solo el super administrador gestiona el catálogo de sedes. Cada sede nueva nace con su administrador;
+        ese usuario entra a su propia sede. La carta pública usa la sede activa más antigua.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {aviso && (
@@ -141,20 +142,16 @@ export default function PaginaSedes() {
                     {sede.activo ? 'Activa' : 'De baja'}
                   </Badge>
                 </td>
-                <td className="text-end text-nowrap">
-                  <Button size="sm" variant="outline-primary" className="me-2" onClick={() => abrirEdicion(sede)}>
-                    Editar
-                  </Button>
-                  {sede.activo && !sede.es_actual && (
-                    <Button size="sm" variant="outline-primary" onClick={() => cambiarActivo(sede, false)}>
-                      Dar de baja
-                    </Button>
-                  )}
-                  {!sede.activo && (
-                    <Button size="sm" variant="primary" onClick={() => cambiarActivo(sede, true)}>
-                      Activar
-                    </Button>
-                  )}
+                <td className="text-end">
+                  <GrupoAcciones>
+                    <BotonAccion icono="pencil" titulo="Editar" onClick={() => abrirEdicion(sede)} />
+                    {sede.activo && !sede.es_actual && (
+                      <BotonAccion icono="trash" titulo="Eliminar" onClick={() => cambiarActivo(sede, false)} />
+                    )}
+                    {!sede.activo && (
+                      <BotonAccion icono="check" titulo="Activar" variant="primary" onClick={() => cambiarActivo(sede, true)} />
+                    )}
+                  </GrupoAcciones>
                 </td>
               </tr>
             ))}
@@ -241,12 +238,8 @@ export default function PaginaSedes() {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setFormulario(null)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
+            <BotonAccion icono="x" titulo="Cancelar" onClick={() => setFormulario(null)} />
+            <BotonAccion icono="save" titulo={guardando ? 'Guardando…' : 'Guardar'} type="submit" variant="primary" disabled={guardando} />
           </Modal.Footer>
         </Form>
       </Modal>

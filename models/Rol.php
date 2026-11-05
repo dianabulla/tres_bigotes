@@ -91,7 +91,18 @@ final class Rol
             'nombre' => $fila['nombre'] !== '' ? $fila['nombre'] : $fila['codigo'],
             'sistema' => (int) $fila['sistema'] === 1,
             'permisos' => Permiso::codigosDeRol($id),
-            'bloqueados' => $fila['codigo'] === 'administrador' ? ['sedes', 'usuarios', 'roles'] : [],
+            'bloqueados' => self::permisosBloqueados($fila['codigo']),
         ];
+    }
+
+    private static function permisosBloqueados(string $codigo): array
+    {
+        if ($codigo === 'superadministrador') {
+            return ['sedes', 'usuarios', 'roles'];
+        }
+        if ($codigo === 'administrador') {
+            return ['usuarios', 'roles'];
+        }
+        return [];
     }
 }

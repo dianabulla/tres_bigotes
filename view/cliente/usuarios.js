@@ -11,6 +11,9 @@ export function guardarUsuario(datos) {
     rol: datos.rol,
     clave: datos.clave,
   }
+  if (datos.establecimiento_id !== undefined && datos.establecimiento_id !== null && datos.establecimiento_id !== '') {
+    cuerpo.establecimiento_id = Number(datos.establecimiento_id)
+  }
   if (datos.id) {
     cuerpo.activo = datos.activo
     return solicitar(`/api/usuarios/${datos.id}`, { metodo: 'PUT', cuerpo })

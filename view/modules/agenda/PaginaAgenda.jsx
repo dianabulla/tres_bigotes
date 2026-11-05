@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap'
-import { buscarClientes, cambiarEstadoCita, crearCita, listarCitas } from '../../cliente/agenda'
+import { useNavigate } from 'react-router-dom'
+import { actualizarCita, buscarClientes, cambiarEstadoCita, crearCita, listarCitas } from '../../cliente/agenda'
 import { listarServicios } from '../../cliente/servicios'
+import BotonAccion, { GrupoAcciones } from '../../components/BotonAccion'
 import { useSesion } from '../../components/Sesion'
 import { tienePermiso } from '../registro'
 
@@ -35,9 +37,48 @@ function hora(valor) {
   return String(valor).slice(11, 16)
 }
 
+function telefonoWhatsApp(valor) {
+  let digitos = String(valor || '').replace(/\D/g, '')
+  if (!digitos) {
+    return null
+  }
+  if (digitos.startsWith('00')) {
+    digitos = digitos.slice(2)
+  }
+  if (digitos.length === 10 && digitos.startsWith('3')) {
+    digitos = `57${digitos}`
+  }
+  if (digitos.length < 10 || digitos.length > 15) {
+    return null
+  }
+  return digitos
+}
+
+function mensajeRecordatorio(cita) {
+  const nombre = cita.cliente?.nombre || 'cliente'
+  const horaCita = hora(cita.inicio)
+  const profesional = cita.colaborador?.nombre
+  const servicios = (cita.servicios || []).map((item) => item.nombre).join(', ')
+  let texto = `Hola ${nombre}, te recordamos tu cita en 3 Bigotes hoy a las ${horaCita}`
+  if (profesional) {
+    texto += ` con ${profesional}`
+  }
+  if (servicios) {
+    texto += `. Servicio: ${servicios}`
+  }
+  texto += '. ¡Te esperamos!'
+  return texto
+}
+
+function urlWhatsApp(telefono, texto) {
+  return `https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`
+}
+
 export default function PaginaAgenda() {
+  const navigate = useNavigate()
   const { usuario } = useSesion()
   const puedeReservar = tienePermiso(usuario, 'agenda')
+  const puedeCobrar = tienePermiso(usuario, 'caja')
   const hoy = diaIso(new Date())
   const [vista, setVista] = useState('dia')
   const [fecha, setFecha] = useState(hoy)
@@ -53,6 +94,9 @@ export default function PaginaAgenda() {
   const [errorReserva, setErrorReserva] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [clientes, setClientes] = useState([])
+  const [recordatorios, setRecordatorios] = useState(null)
+  const [indiceRecordatorio, setIndiceRecordatorio] = useState(0)
+  const [abiertosRecordatorio, setAbiertosRecordatorio] = useState([])
   const inicioRango = vista === 'semana' ? lunesDe(fecha) : fecha
   const finRango = sumarDias(inicioRango, vista === 'semana' ? 7 : 1)
   const dias = vista === 'semana'
@@ -121,19 +165,25 @@ export default function PaginaAgenda() {
       servicios: reserva.servicios,
       notas: reserva.notas,
     }
-    if (reserva.cliente_id) {
-      cuerpo.cliente_id = reserva.cliente_id
-    } else {
-      cuerpo.cliente = {
-        nombre: reserva.nombre,
-        telefono: reserva.telefono,
-        correo: reserva.correo,
-      }
-    }
     try {
-      await crearCita(cuerpo)
-      setReserva(null)
-      setAviso('Cita reservada.')
+      if (reserva.id) {
+        await actualizarCita(reserva.id, cuerpo)
+        setReserva(null)
+        setAviso('Cita actualizada.')
+      } else {
+        if (reserva.cliente_id) {
+          cuerpo.cliente_id = reserva.cliente_id
+        } else {
+          cuerpo.cliente = {
+            nombre: reserva.nombre,
+            telefono: reserva.telefono,
+            correo: reserva.correo,
+          }
+        }
+        await crearCita(cuerpo)
+        setReserva(null)
+        setAviso('Cita reservada.')
+      }
       await cargar()
     } catch (fallo) {
       setErrorReserva(fallo.message)
@@ -147,6 +197,7 @@ export default function PaginaAgenda() {
     setBusqueda('')
     setClientes([])
     setReserva({
+      id: null,
       cliente_id: null,
       cliente_nombre: '',
       nombre: '',
@@ -159,21 +210,190 @@ export default function PaginaAgenda() {
     })
   }
 
+  function abrirEdicion(cita) {
+    setErrorReserva('')
+    setBusqueda('')
+    setClientes([])
+    setReserva({
+      id: cita.id,
+      cliente_id: cita.cliente.id,
+      cliente_nombre: cita.cliente.nombre,
+      nombre: '',
+      telefono: '',
+      correo: '',
+      colaborador_id: String(cita.colaborador.id),
+      inicio: String(cita.inicio).slice(0, 16).replace(' ', 'T'),
+      servicios: cita.servicios.map((item) => item.id),
+      notas: cita.notas ?? '',
+    })
+  }
+
+  function irACaja(cita) {
+    try {
+      sessionStorage.setItem('caja_cobro_agenda', JSON.stringify({ citaId: String(cita.id), listo: true }))
+    } catch {
+      /* sessionStorage puede fallar en modo privado */
+    }
+    navigate(`/gestion/caja?cita=${cita.id}&listo=1`)
+  }
+
+  async function completarYCobrar(cita) {
+    setError('')
+    setGuardando(true)
+    try {
+      if (cita.estado === 'pendiente') {
+        await cambiarEstadoCita(cita.id, 'en_proceso')
+      }
+      if (cita.estado === 'pendiente' || cita.estado === 'en_proceso') {
+        await cambiarEstadoCita(cita.id, 'completada')
+      }
+      try {
+        sessionStorage.setItem('caja_cobro_agenda', JSON.stringify({ citaId: String(cita.id), listo: true }))
+      } catch {
+        /* sessionStorage puede fallar en modo privado */
+      }
+      navigate(`/gestion/caja?cita=${cita.id}&listo=1`)
+    } catch (fallo) {
+      setError(fallo.message)
+      await cargar()
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  function botonCobrar(cita, destacado = false) {
+    if (!puedeCobrar) {
+      return null
+    }
+    if (cita.estado === 'completada') {
+      return (
+        <BotonAccion
+          icono="cash"
+          titulo="Cobrar en caja"
+          variant={destacado ? 'primary' : 'outline-primary'}
+          disabled={guardando}
+          onClick={() => irACaja(cita)}
+        />
+      )
+    }
+    return (
+      <BotonAccion
+        icono="cash"
+        titulo="Cobrar en caja"
+        variant={destacado ? 'primary' : 'outline-primary'}
+        disabled={guardando}
+        onClick={() => completarYCobrar(cita)}
+      />
+    )
+  }
+
+  function botonCancelar(cita) {
+    if (!puedeReservar) {
+      return null
+    }
+    return (
+      <BotonAccion
+        icono="trash"
+        titulo="Cancelar cita"
+        disabled={guardando}
+        onClick={() => mover(cita.id, 'cancelada')}
+      />
+    )
+  }
+
+  function citasDelDiaRecordatorio() {
+    return citas
+      .filter((cita) => String(cita.inicio).slice(0, 10) === fecha && cita.estado !== 'cancelada')
+      .slice()
+      .sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)))
+      .map((cita) => {
+        const telefono = telefonoWhatsApp(cita.cliente?.telefono)
+        const mensaje = mensajeRecordatorio(cita)
+        return {
+          id: cita.id,
+          nombre: cita.cliente?.nombre || 'Sin nombre',
+          hora: hora(cita.inicio),
+          telefonoOriginal: cita.cliente?.telefono || '',
+          telefono,
+          mensaje,
+          url: telefono ? urlWhatsApp(telefono, mensaje) : null,
+        }
+      })
+  }
+
+  function abrirRecordatorios() {
+    const lista = citasDelDiaRecordatorio()
+    const primero = lista.findIndex((item) => item.telefono)
+    setRecordatorios(lista)
+    setIndiceRecordatorio(primero >= 0 ? primero : 0)
+    setAbiertosRecordatorio([])
+  }
+
+  function cerrarRecordatorios() {
+    setRecordatorios(null)
+    setIndiceRecordatorio(0)
+    setAbiertosRecordatorio([])
+  }
+
+  function marcarAbierto(id) {
+    setAbiertosRecordatorio((actual) => (actual.includes(id) ? actual : [...actual, id]))
+  }
+
+  function avanzarRecordatorio() {
+    if (!recordatorios) {
+      return
+    }
+    const siguiente = recordatorios.findIndex((item, indice) => indice > indiceRecordatorio && item.telefono)
+    if (siguiente >= 0) {
+      setIndiceRecordatorio(siguiente)
+    }
+  }
+
+  function abrirWhatsAppRecordatorio(item) {
+    if (!item?.url) {
+      return
+    }
+    window.open(item.url, '_blank', 'noopener,noreferrer')
+    marcarAbierto(item.id)
+  }
+
+  function abrirYSeguir() {
+    const actual = recordatorios?.[indiceRecordatorio]
+    if (!actual) {
+      return
+    }
+    abrirWhatsAppRecordatorio(actual)
+    avanzarRecordatorio()
+  }
+
   function acciones(cita) {
     if (cita.estado === 'pendiente') {
       return (
-        <>
-          <Button size="sm" className="me-2" disabled={guardando} onClick={() => mover(cita.id, 'en_proceso')}>En proceso</Button>
-          {puedeReservar && <Button size="sm" variant="outline-primary" disabled={guardando} onClick={() => mover(cita.id, 'cancelada')}>Cancelar</Button>}
-        </>
+        <GrupoAcciones>
+          {puedeReservar && (
+            <BotonAccion icono="pencil" titulo="Editar" disabled={guardando} onClick={() => abrirEdicion(cita)} />
+          )}
+          <BotonAccion icono="play" titulo="En proceso" variant="primary" disabled={guardando} onClick={() => mover(cita.id, 'en_proceso')} />
+          {botonCobrar(cita)}
+          {botonCancelar(cita)}
+        </GrupoAcciones>
       )
     }
     if (cita.estado === 'en_proceso') {
       return (
-        <>
-          <Button size="sm" className="me-2" disabled={guardando} onClick={() => mover(cita.id, 'completada')}>Completar</Button>
-          {puedeReservar && <Button size="sm" variant="outline-primary" disabled={guardando} onClick={() => mover(cita.id, 'cancelada')}>Cancelar</Button>}
-        </>
+        <GrupoAcciones>
+          <BotonAccion icono="check" titulo="Completar" variant="primary" disabled={guardando} onClick={() => mover(cita.id, 'completada')} />
+          {botonCobrar(cita)}
+          {botonCancelar(cita)}
+        </GrupoAcciones>
+      )
+    }
+    if (cita.estado === 'completada') {
+      return (
+        <GrupoAcciones>
+          {botonCobrar(cita, true)}
+          {botonCancelar(cita)}
+        </GrupoAcciones>
       )
     }
     return null
@@ -192,23 +412,35 @@ export default function PaginaAgenda() {
     )
   }
 
+  const conTelefonoRecordatorio = (recordatorios || []).filter((item) => item.telefono)
+  const sinTelefonoRecordatorio = (recordatorios || []).filter((item) => !item.telefono)
+  const actualRecordatorio = recordatorios?.[indiceRecordatorio]
+  const enviadosRecordatorio = conTelefonoRecordatorio.filter((item) => abiertosRecordatorio.includes(item.id)).length
+
   return (
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Agenda</h1>
-        <div className="d-flex flex-wrap gap-2">
-          {puedeReservar && <Button onClick={abrirReserva}>Nueva cita</Button>}
-        </div>
+        <GrupoAcciones className="acciones--inicio">
+          {puedeReservar && (
+            <BotonAccion icono="chat" titulo="Recordatorios WhatsApp del día" onClick={abrirRecordatorios} />
+          )}
+          {puedeReservar && <BotonAccion icono="plus" titulo="Nueva cita" variant="primary" onClick={abrirReserva} />}
+        </GrupoAcciones>
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {aviso && <Alert variant="light" className="border border-dark text-black" onClose={() => setAviso('')} dismissible>{aviso}</Alert>}
       <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-        <Button variant={vista === 'dia' ? 'primary' : 'outline-primary'} onClick={() => setVista('dia')}>Día</Button>
-        <Button variant={vista === 'semana' ? 'primary' : 'outline-primary'} onClick={() => setVista('semana')}>Semana</Button>
+        <GrupoAcciones className="acciones--inicio">
+          <BotonAccion icono="calendar" titulo="Vista día" variant={vista === 'dia' ? 'primary' : 'outline-primary'} onClick={() => setVista('dia')} />
+          <BotonAccion icono="grid" titulo="Vista semana" variant={vista === 'semana' ? 'primary' : 'outline-primary'} onClick={() => setVista('semana')} />
+        </GrupoAcciones>
         <Form.Control type="date" value={fecha} onChange={(evento) => setFecha(evento.target.value)} style={{ maxWidth: '12rem' }} />
-        <Button variant="outline-primary" onClick={() => setFecha(sumarDias(fecha, vista === 'semana' ? -7 : -1))}>Anterior</Button>
-        <Button variant="outline-primary" onClick={() => setFecha(hoy)}>Hoy</Button>
-        <Button variant="outline-primary" onClick={() => setFecha(sumarDias(fecha, vista === 'semana' ? 7 : 1))}>Siguiente</Button>
+        <GrupoAcciones className="acciones--inicio">
+          <BotonAccion icono="chevronLeft" titulo="Anterior" onClick={() => setFecha(sumarDias(fecha, vista === 'semana' ? -7 : -1))} />
+          <BotonAccion icono="calendar" titulo="Hoy" onClick={() => setFecha(hoy)} />
+          <BotonAccion icono="chevronRight" titulo="Siguiente" onClick={() => setFecha(sumarDias(fecha, vista === 'semana' ? 7 : 1))} />
+        </GrupoAcciones>
         {puedeReservar && (
           <Form.Select value={profesionalId} onChange={(evento) => setProfesionalId(evento.target.value)} style={{ maxWidth: '16rem' }}>
             <option value="">Todos los profesionales</option>
@@ -261,24 +493,103 @@ export default function PaginaAgenda() {
         </Row>
       )}
 
+      <Modal show={recordatorios !== null} onHide={cerrarRecordatorios} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Recordatorios del {fecha}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-secondary small mb-3">
+            Se abre WhatsApp con el mensaje listo. Confirma el envío en cada chat y vuelve aquí para el siguiente.
+          </p>
+          {recordatorios && recordatorios.length === 0 ? (
+            <p className="mb-0 text-secondary">No hay citas activas en este día.</p>
+          ) : recordatorios ? (
+            <>
+              <p className="mb-3">
+                Abiertos {enviadosRecordatorio} de {conTelefonoRecordatorio.length}
+                {sinTelefonoRecordatorio.length > 0 ? ` · ${sinTelefonoRecordatorio.length} sin teléfono` : ''}
+              </p>
+              {actualRecordatorio?.telefono ? (
+                <div className="border rounded p-3 mb-3">
+                  <div className="fw-semibold mb-1">Ahora: {actualRecordatorio.hora} · {actualRecordatorio.nombre}</div>
+                  <div className="text-secondary small mb-2">
+                    {actualRecordatorio.telefonoOriginal || actualRecordatorio.telefono}
+                  </div>
+                  <p className="small mb-3">{actualRecordatorio.mensaje}</p>
+                  <GrupoAcciones className="acciones--inicio">
+                    <Button variant="primary" size="sm" onClick={abrirYSeguir}>
+                      Abrir WhatsApp y siguiente
+                    </Button>
+                    <Button variant="outline-primary" size="sm" onClick={() => abrirWhatsAppRecordatorio(actualRecordatorio)}>
+                      Solo abrir
+                    </Button>
+                    <Button variant="outline-secondary" size="sm" onClick={avanzarRecordatorio}>
+                      Saltar
+                    </Button>
+                  </GrupoAcciones>
+                </div>
+              ) : conTelefonoRecordatorio.length === 0 ? (
+                <Alert variant="warning">Ninguna cita del día tiene un teléfono válido para WhatsApp.</Alert>
+              ) : null}
+              <div className="list-group">
+                {recordatorios.map((item, indice) => {
+                  const abierto = abiertosRecordatorio.includes(item.id)
+                  const activo = indice === indiceRecordatorio
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`list-group-item list-group-item-action d-flex justify-content-between align-items-start gap-2 ${activo ? 'active' : ''}`}
+                      disabled={!item.telefono}
+                      onClick={() => {
+                        if (item.telefono) {
+                          setIndiceRecordatorio(indice)
+                        }
+                      }}
+                    >
+                      <span>
+                        <strong>{item.hora}</strong> {item.nombre}
+                        <span className={activo ? 'd-block small opacity-75' : 'd-block small text-secondary'}>
+                          {item.telefono
+                            ? (item.telefonoOriginal || item.telefono)
+                            : 'Sin teléfono válido'}
+                        </span>
+                      </span>
+                      <Badge bg={!item.telefono ? 'warning' : abierto ? 'success' : 'secondary'}>
+                        {!item.telefono ? 'Sin tel.' : abierto ? 'Abierto' : 'Pendiente'}
+                      </Badge>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer>
+          <BotonAccion icono="x" titulo="Cerrar" onClick={cerrarRecordatorios} />
+        </Modal.Footer>
+      </Modal>
+
       <Modal show={reserva !== null} onHide={() => setReserva(null)} centered>
         <Form onSubmit={reservar}>
           <Modal.Header closeButton>
-            <Modal.Title>Nueva cita</Modal.Title>
+            <Modal.Title>{reserva?.id ? 'Editar cita' : 'Nueva cita'}</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             {errorReserva && <Alert variant="danger">{errorReserva}</Alert>}
             <Form.Label>Cliente</Form.Label>
-            {reserva?.cliente_id ? (
+            {reserva?.id ? (
+              <p className="mb-3">{reserva.cliente_nombre}</p>
+            ) : reserva?.cliente_id ? (
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <span>{reserva.cliente_nombre}</span>
-                <Button size="sm" variant="outline-primary" type="button" onClick={() => setReserva((actual) => ({ ...actual, cliente_id: null, cliente_nombre: '' }))}>Cambiar</Button>
+                <BotonAccion icono="refresh" titulo="Cambiar cliente" onClick={() => setReserva((actual) => ({ ...actual, cliente_id: null, cliente_nombre: '' }))} />
               </div>
             ) : (
               <>
                 <div className="d-flex gap-2 mb-2">
                   <Form.Control value={busqueda} placeholder="Buscar por nombre o teléfono" onChange={(evento) => setBusqueda(evento.target.value)} />
-                  <Button type="button" variant="outline-primary" onClick={buscar}>Buscar</Button>
+                  <BotonAccion icono="search" titulo="Buscar cliente" onClick={buscar} />
                 </div>
                 {clientes.length > 0 && (
                   <div className="mb-3">
@@ -348,8 +659,14 @@ export default function PaginaAgenda() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" type="button" onClick={() => setReserva(null)}>Cancelar</Button>
-            <Button type="submit" disabled={guardando || (reserva?.servicios.length ?? 0) === 0}>{guardando ? 'Guardando…' : 'Reservar'}</Button>
+            <BotonAccion icono="x" titulo="Cancelar" onClick={() => setReserva(null)} />
+            <BotonAccion
+              icono={reserva?.id ? 'save' : 'check'}
+              titulo={guardando ? 'Guardando…' : (reserva?.id ? 'Guardar' : 'Reservar')}
+              type="submit"
+              variant="primary"
+              disabled={guardando || (reserva?.servicios.length ?? 0) === 0}
+            />
           </Modal.Footer>
         </Form>
       </Modal>

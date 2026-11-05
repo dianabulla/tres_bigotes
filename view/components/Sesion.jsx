@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { guardarToken, leerToken } from '../cliente/http'
-import { cerrarSesion, iniciarSesion, leerSesion } from '../cliente/sesion'
+import { cerrarSesion, elegirSedeTrabajo, iniciarSesion, leerSesion } from '../cliente/sesion'
+import { prefetchInicioGestion, prefetchPagina } from '../modules/cargas'
 
 const Contexto = createContext(null)
 
@@ -15,8 +16,13 @@ export function ProveedorSesion({ children }) {
       setCargando(false)
       return
     }
+    // Mientras valida el token, ya baja el chunk de Agenda (pantalla de entrada).
+    prefetchPagina('agenda')
     leerSesion()
-      .then((datos) => setUsuario(datos.usuario))
+      .then((datos) => {
+        setUsuario(datos.usuario)
+        prefetchInicioGestion(datos.usuario?.permisos ?? [])
+      })
       .catch(() => {
         guardarToken(null)
         setUsuario(null)
@@ -31,7 +37,13 @@ export function ProveedorSesion({ children }) {
       const datos = await iniciarSesion(correo, clave)
       guardarToken(datos.token)
       setUsuario(datos.usuario)
+      prefetchInicioGestion(datos.usuario?.permisos ?? [])
       navigate('/gestion', { replace: true })
+    },
+    async cambiarSedeTrabajo(establecimientoId) {
+      const datos = await elegirSedeTrabajo(establecimientoId)
+      setUsuario(datos.usuario)
+      return datos.usuario
     },
     async salir() {
       try {

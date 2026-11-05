@@ -1,5 +1,5 @@
-import 'bootstrap/dist/css/bootstrap.min.css'
-import { lazy, Suspense } from 'react'
+import './bootstrap-tb.scss'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import CursorGlow from './components/CursorGlow'
 import Fondo from './components/Fondo'
@@ -7,22 +7,25 @@ import Marco from './components/Marco'
 import PaginaIngreso from './components/PaginaIngreso'
 import RutaPrivada from './components/RutaPrivada'
 import { useSesion } from './components/Sesion'
-import PaginaReserva from './modules/agenda/PaginaReserva'
+import { cargasPagina, prefetchInicioGestion, prefetchPagina } from './modules/cargas'
 import { modulos } from './modules/registro'
 
-const PaginaAgenda = lazy(() => import('./modules/agenda/PaginaAgenda'))
-const PaginaCaja = lazy(() => import('./modules/caja/PaginaCaja'))
-const PaginaClinica = lazy(() => import('./modules/clinica/PaginaClinica'))
-const PaginaColaboradores = lazy(() => import('./modules/colaboradores/PaginaColaboradores'))
-const PaginaComisiones = lazy(() => import('./modules/colaboradores/PaginaComisiones'))
-const PaginaInventario = lazy(() => import('./modules/inventario/PaginaInventario'))
-const PaginaRoles = lazy(() => import('./modules/roles/PaginaRoles'))
-const PaginaSedes = lazy(() => import('./modules/sedes/PaginaSedes'))
-const PaginaServicios = lazy(() => import('./modules/servicios/PaginaServicios'))
-const PaginaUsuarios = lazy(() => import('./modules/usuarios/PaginaUsuarios'))
+const PaginaReserva = lazy(cargasPagina.reserva)
+const PaginaAgenda = lazy(cargasPagina.agenda)
+const PaginaCaja = lazy(cargasPagina.caja)
+const PaginaClinica = lazy(cargasPagina.clinica)
+const PaginaColaboradores = lazy(cargasPagina.colaboradores)
+const PaginaComisiones = lazy(cargasPagina.comisiones)
+const PaginaHorarios = lazy(cargasPagina.horarios)
+const PaginaInventario = lazy(cargasPagina.inventario)
+const PaginaRoles = lazy(cargasPagina.roles)
+const PaginaSedes = lazy(cargasPagina.sedes)
+const PaginaServicios = lazy(cargasPagina.servicios)
+const PaginaUsuarios = lazy(cargasPagina.usuarios)
 
 const paginas = {
   agenda: PaginaAgenda,
+  horarios: PaginaHorarios,
   clinica: PaginaClinica,
   colaboradores: PaginaColaboradores,
   comisiones: PaginaComisiones,
@@ -36,7 +39,10 @@ const paginas = {
 
 function RedirigirInicio() {
   const { usuario } = useSesion()
-  const destino = modulos.find((modulo) => modulo.permisos.some((codigo) => (usuario.permisos ?? []).includes(codigo)))
+  const permisos = usuario.permisos ?? []
+  const agenda = modulos.find((modulo) => modulo.id === 'agenda' && modulo.permisos.some((codigo) => permisos.includes(codigo)))
+  const destino = agenda
+    || modulos.find((modulo) => modulo.permisos.some((codigo) => permisos.includes(codigo)))
   if (!destino) {
     return (
       <div className="m-4 alert alert-warning" role="alert">
@@ -49,20 +55,41 @@ function RedirigirInicio() {
 
 function CargaRuta() {
   return (
-    <div className="d-flex justify-content-center align-items-center py-5" role="status" aria-live="polite">
+    <div className="carga-ruta" role="status" aria-live="polite">
+      <span className="carga-ruta-punto" aria-hidden="true" />
       <span className="visually-hidden">Cargando…</span>
     </div>
   )
+}
+
+function PrefetchGestion() {
+  const { pathname } = useLocation()
+  const { usuario } = useSesion()
+
+  useEffect(() => {
+    if (pathname.startsWith('/gestion') && usuario?.permisos) {
+      prefetchInicioGestion(usuario.permisos)
+    }
+  }, [pathname, usuario])
+
+  return null
 }
 
 export default function App() {
   const { pathname } = useLocation()
   const conAmbiente = pathname === '/ingreso'
 
+  useEffect(() => {
+    if (pathname === '/' || pathname === '/reservar') {
+      prefetchPagina('reserva')
+    }
+  }, [pathname])
+
   return (
     <>
     {conAmbiente && <Fondo />}
     {conAmbiente && <CursorGlow />}
+    <PrefetchGestion />
     <div className="app-capa">
     <Suspense fallback={<CargaRuta />}>
     <Routes>

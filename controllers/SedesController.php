@@ -10,6 +10,7 @@ use TresBigotes\Api\Respuesta;
 use TresBigotes\Api\Router;
 use TresBigotes\Config\Conexion;
 use TresBigotes\Models\Establecimiento;
+use TresBigotes\Models\Horario;
 use TresBigotes\Models\Usuario;
 
 final class SedesController
@@ -23,18 +24,20 @@ final class SedesController
 
     public static function listar(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'sedes', 'No tienes permiso para administrar las sedes');
-        $actual = (int) $peticion->usuario['establecimiento_id'];
+        Acceso::exigirPermiso($peticion, 'sedes', 'No tienes permiso para administrar las sedes');
+        $activa = (int) ($peticion->usuario['establecimiento_activo_id']
+            ?? $peticion->usuario['establecimiento_id']
+            ?? 0);
         $sedes = Establecimiento::listar();
         foreach ($sedes as $indice => $sede) {
-            $sedes[$indice]['es_actual'] = $sede['id'] === $actual;
+            $sedes[$indice]['es_actual'] = $sede['id'] === $activa;
         }
         Respuesta::json(200, ['sedes' => $sedes]);
     }
 
     public static function crear(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'sedes', 'No tienes permiso para administrar las sedes');
+        Acceso::exigirPermiso($peticion, 'sedes', 'No tienes permiso para administrar las sedes');
         $datos = self::leerSede($peticion->cuerpo, true);
         $admin = self::leerAdmin($peticion->cuerpo);
         $pdo = Conexion::obtener();
@@ -46,6 +49,7 @@ final class SedesController
                 $pdo->rollBack();
                 Respuesta::json(500, ['error' => 'Error interno']);
             }
+            Horario::sembrarSede($pdo, $id);
             $pdo->commit();
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
@@ -60,19 +64,22 @@ final class SedesController
 
     public static function actualizar(Peticion $peticion): void
     {
-        Acceso::exigir($peticion, 'sedes', 'No tienes permiso para administrar las sedes');
+        Acceso::exigirPermiso($peticion, 'sedes', 'No tienes permiso para administrar las sedes');
         $id = self::id($peticion);
         if (Establecimiento::buscar($id) === null) {
             Respuesta::json(404, ['error' => 'Sede no encontrada']);
         }
         $datos = self::leerSede($peticion->cuerpo, false);
-        if (!$datos['activo'] && $id === (int) $peticion->usuario['establecimiento_id']) {
-            Respuesta::json(422, ['error' => 'No puedes dar de baja la sede con la que entraste']);
+        $activa = (int) ($peticion->usuario['establecimiento_activo_id']
+            ?? $peticion->usuario['establecimiento_id']
+            ?? 0);
+        if (!$datos['activo'] && $id === $activa && $activa > 0) {
+            Respuesta::json(422, ['error' => 'No puedes dar de baja la sede de trabajo actual']);
         }
         $pdo = Conexion::obtener();
         Establecimiento::actualizar($pdo, $id, $datos);
         $sede = Establecimiento::buscar($id);
-        $sede['es_actual'] = $id === (int) $peticion->usuario['establecimiento_id'];
+        $sede['es_actual'] = $id === $activa;
         Respuesta::json(200, ['sede' => $sede]);
     }
 

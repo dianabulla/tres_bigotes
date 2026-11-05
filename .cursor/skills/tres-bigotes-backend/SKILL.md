@@ -32,7 +32,7 @@ config/              .env y conexión PDO, fuera de git el .env real
 
 - Login devuelve un token opaco. En base se guarda solo su hash
 - Toda ruta, salvo login, exige `Authorization: Bearer`
-- El establecimiento sale del usuario autenticado. Nunca del cuerpo libre si contradice la sesión
+- El establecimiento sale del usuario autenticado (o de la sede de trabajo del super). Nunca del cuerpo libre si contradice el alcance
 - Un `id` de otra sede responde `404`
 
 ## Qué no hace esta capa
